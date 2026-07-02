@@ -85,3 +85,5 @@ class VendorVerdict:
     assumptions: tuple[str, ...]
     due_diligence_email: str
     confidence: Confidence
+    collaboration_steps: tuple[str, ...] = field(default_factory=tuple)
+    critic_warnings: tuple[str, ...] = field(default_factory=tuple)

@@ -83,31 +83,34 @@ vendorverdict --demo --no-live-evidence
 
 ---
 
-## Agent workflow
+## Multi-agent collaboration
+
+VendorVerdict is exposed as one public ASI:One-compatible uAgent, backed by specialist worker agents that collaborate inside the workflow. This keeps the Agentverse user experience simple while making each responsibility explicit and testable.
 
 ```text
 ASI:One user
    |
    v
-VendorVerdict uAgent
+VendorVerdict public uAgent / Orchestrator
    |
-   +--> Intent parser
+   +--> Procurement Intent Agent
    |      Extracts vendors, use case, team size, region, and data sensitivity.
    |
-   +--> Evidence collector
+   +--> Evidence Agent
    |      Checks configured official vendor security, pricing, privacy, and docs pages.
+   |      Falls back to curated evidence if live checks fail.
    |
-   +--> Fallback evidence layer
-   |      Uses curated vendor facts if a live check fails or the demo needs reliability.
+   +--> Risk Scoring Agent
+   |      Applies the transparent weighted procurement-risk rubric.
    |
-   +--> Risk scorer
-   |      Applies a transparent weighted procurement-risk rubric.
+   +--> Recommendation Agent
+   |      Ranks vendors or classifies a single-vendor audit.
    |
-   +--> Recommendation engine
-   |      Ranks vendors and explains the best practical choice.
+   +--> Email Agent
+   |      Creates the ready-to-send due-diligence email.
    |
-   +--> Artifact generator
-   |      Creates a due-diligence email the user can send to the chosen vendor.
+   +--> Critic Agent
+   |      Reviews confidence, evidence gaps, and sensitive-data risk before final output.
    |
    v
 ASI:One response
@@ -116,13 +119,13 @@ ASI:One response
 Judge-visible workflow section included in every successful response:
 
 ```text
-Agent workflow completed:
-1. Parsed procurement intent and extracted vendors/use case
-2. Checked configured official vendor sources
-3. Applied the vendor-risk scoring rubric
-4. Ranked the options by practical procurement risk
-5. Selected a recommended vendor
-6. Generated a ready-to-send due-diligence email
+Multi-agent collaboration completed:
+1. Procurement Intent Agent extracted the vendors/use case.
+2. Evidence Agent checked official vendor sources.
+3. Risk Scoring Agent applied the procurement-risk rubric.
+4. Recommendation Agent selected or classified the vendor.
+5. Email Agent drafted the due-diligence email.
+6. Critic Agent reviewed confidence and evidence gaps.
 ```
 
 ---
@@ -253,10 +256,13 @@ src/vendorverdict/
   scoring.py            # Transparent weighted risk scoring
   verdict.py            # Response assembly
   emailer.py            # Due-diligence email artifact
+  agents/               # Specialist multi-agent collaboration layer
+    multiagent.py       # Intent, evidence, scoring, recommendation, email, critic agents
   tools/evidence.py     # Live official-source checks + fallback evidence collector
   data/fallback_vendors.json
 
 tests/
+  test_agents.py
   test_parser.py
   test_scoring.py
   test_evidence.py
@@ -277,7 +283,7 @@ python -m unittest discover -s tests -v
 Expected:
 
 ```text
-Ran 7 tests
+Ran 11 tests
 OK
 ```
 
@@ -285,22 +291,21 @@ OK
 
 ## Current limitations
 
-- The MVP compares named vendors; it does not yet discover vendors from a broad category.
+- The MVP compares or audits named vendors; it does not yet discover vendors from a broad category.
 - It checks configured official URLs rather than doing open-ended search across the web.
 - It provides procurement guidance, not legal advice or a formal security audit.
-- Single-vendor audit mode is planned as the next product upgrade.
+- The specialist worker agents currently run behind one public Agentverse agent for demo reliability.
 - Interactive ASI:One cards and payment flows are stretch features.
 
 ---
 
 ## Roadmap
 
-1. Add single-vendor audit mode for prompts like: `Check Coda for storing client project data`.
-2. Add vendor discovery for category prompts like: `Find three CRM tools for a 5-person agency`.
-3. Add richer evidence extraction from official pages.
-4. Split evidence, scoring, and email drafting into separate uAgents if time allows.
-5. Add ASI:One interactive cards for ranked comparisons.
-6. Add a credible premium report/payment flow as a stretch feature.
+1. Add vendor discovery for category prompts like: `Find three CRM tools for a 5-person agency`.
+2. Add richer evidence extraction from official pages.
+3. Optionally publish the specialist worker agents as separate Agentverse agents.
+4. Add ASI:One interactive cards for ranked comparisons.
+5. Add a credible premium report/payment flow as a stretch feature.
 
 ---
 

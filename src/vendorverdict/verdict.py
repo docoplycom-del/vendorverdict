@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from .emailer import build_due_diligence_email
-from .models import VendorRequest, VendorVerdict
-from .parser import parse_vendor_request
-from .scoring import rank_vendors
+from .agents import VendorVerdictMultiAgentOrchestrator
+from .models import VendorVerdict
 from .tools.evidence import EvidenceCollector
 
 
@@ -16,22 +14,9 @@ MISSING_USE_CASE_PROMPT = (
 
 
 def build_vendor_verdict(raw_query: str, collector: EvidenceCollector | None = None) -> VendorVerdict:
-    collector = collector or EvidenceCollector()
-    request = parse_vendor_request(raw_query, collector.known_vendor_names)
-    evidences = collector.get_many(request.vendors)
-    scores = rank_vendors(evidences, request) if evidences else tuple()
-    recommendation = scores[0] if scores else None
-    assumptions = _build_assumptions(request)
-    email = build_due_diligence_email(recommendation, request)
-    confidence = _overall_confidence(scores)
-    return VendorVerdict(
-        request=request,
-        scores=scores,
-        recommendation=recommendation,
-        assumptions=assumptions,
-        due_diligence_email=email,
-        confidence=confidence,
-    )
+    """Build a VendorVerdict through specialist worker-agent collaboration."""
+    orchestrator = VendorVerdictMultiAgentOrchestrator(collector=collector or EvidenceCollector())
+    return orchestrator.run(raw_query)
 
 
 def render_response(raw_query: str, use_live_evidence: bool | None = None) -> str:
@@ -69,20 +54,9 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
     for assumption in verdict.assumptions:
         lines.append(f"- {assumption}")
     lines.append("")
-    lines.append("Agent workflow completed:")
-    if is_single_vendor_audit:
-        lines.append("1. Parsed procurement intent and extracted vendor/use case")
-        lines.append("2. Checked configured official vendor sources")
-        lines.append("3. Applied the vendor-risk scoring rubric")
-        lines.append("4. Classified the vendor's practical procurement risk")
-        lines.append("5. Generated a ready-to-send due-diligence email")
-    else:
-        lines.append("1. Parsed procurement intent and extracted vendors/use case")
-        lines.append("2. Checked configured official vendor sources")
-        lines.append("3. Applied the vendor-risk scoring rubric")
-        lines.append("4. Ranked the options by practical procurement risk")
-        lines.append("5. Selected a recommended vendor")
-        lines.append("6. Generated a ready-to-send due-diligence email")
+    lines.append("Multi-agent collaboration completed:")
+    for idx, step in enumerate(verdict.collaboration_steps, start=1):
+        lines.append(f"{idx}. {step}")
     lines.append("")
 
     if is_single_vendor_audit:
@@ -136,6 +110,11 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
     lines.append(verdict.due_diligence_email)
     lines.append("```")
     lines.append("")
+    if verdict.critic_warnings:
+        lines.append("Critic Agent notes:")
+        for warning in verdict.critic_warnings:
+            lines.append(f"- {warning}")
+        lines.append("")
     lines.append("Sources and confidence:")
     for score in verdict.scores:
         if score.source_checks:
@@ -162,22 +141,6 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
     return "\n".join(lines)
 
 
-
-def _build_assumptions(request: VendorRequest) -> tuple[str, ...]:
-    assumptions = []
-    assumptions.append(f"Data sensitivity is treated as {request.data_sensitivity} based on the wording of the request.")
-    if request.team_size:
-        assumptions.append(f"Team size: {request.team_size}.")
-    else:
-        assumptions.append("Team size was not specified, so I assume a small SME/team context.")
-    if request.region:
-        assumptions.append(f"Region: {request.region}.")
-    else:
-        assumptions.append("Region was not specified, so regulatory analysis is general rather than jurisdiction-specific.")
-    return tuple(assumptions)
-
-
-
 def _single_vendor_decision(score) -> tuple[str, str]:
     """Return a concise go/caution/avoid-style decision for audit mode."""
     if score.overall >= 80 and score.security >= 75 and score.privacy >= 75:
@@ -194,12 +157,3 @@ def _single_vendor_decision(score) -> tuple[str, str]:
         "Needs further review",
         "should not be selected for this use case until the key risk questions are answered.",
     )
-
-def _overall_confidence(scores) -> str:
-    if not scores:
-        return "Low"
-    if all(score.confidence == "High" for score in scores):
-        return "High"
-    if any(score.confidence == "Medium" for score in scores):
-        return "Medium"
-    return "Low"
