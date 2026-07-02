@@ -8,9 +8,26 @@ on:
 jobs:
   docker-build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Build Docker image
         run: docker build -t vendorverdict:ci .
+
       - name: Smoke test health check inside container image
         run: docker run --rm --entrypoint vendorverdict vendorverdict:ci --health
+
+      - name: Login to Azure Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image to ACR
+        if: github.event_name == 'push'
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/vendorverdict:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/vendorverdict:latest
