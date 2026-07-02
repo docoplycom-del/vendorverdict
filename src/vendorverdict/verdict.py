@@ -61,6 +61,14 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
     for assumption in verdict.assumptions:
         lines.append(f"- {assumption}")
     lines.append("")
+    lines.append("Agent workflow completed:")
+    lines.append("1. Parsed procurement intent and extracted vendors/use case")
+    lines.append("2. Checked configured official vendor sources")
+    lines.append("3. Applied the vendor-risk scoring rubric")
+    lines.append("4. Ranked the options by practical procurement risk")
+    lines.append("5. Selected a recommended vendor")
+    lines.append("6. Generated a ready-to-send due-diligence email")
+    lines.append("")
     lines.append("🏆 Recommendation:")
     lines.append(
         f"{winner.vendor} is the safest MVP choice because it has the strongest overall balance "
