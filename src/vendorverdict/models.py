@@ -8,12 +8,30 @@ Confidence = Literal["High", "Medium", "Low"]
 
 
 @dataclass(frozen=True)
+class SourceCheck:
+    """Result of checking an official vendor source URL.
+
+    This keeps live evidence separate from fallback evidence, so the demo can
+    degrade gracefully if a vendor page or network request fails.
+    """
+
+    label: str
+    # The URL we intended to check from our official-source registry.
+    url: str
+    ok: bool
+    status_code: int | None = None
+    note: str = ""
+    # Final URL after redirects, if different. This avoids making a
+    # redirected vendor page look like the original configured source.
+    final_url: str | None = None
+
+
+@dataclass(frozen=True)
 class VendorEvidence:
     """Public evidence and fallback facts for a vendor.
 
-    MVP note: live evidence collection will later populate/override these fields.
-    For the first skeleton, we use curated fallback URLs and notes so the demo
-    remains reliable even without internet or third-party API keys.
+    Fallback evidence keeps the demo reliable. Live source checks add visible
+    tool use when internet access is available.
     """
 
     name: str
@@ -25,6 +43,8 @@ class VendorEvidence:
     known_strengths: tuple[str, ...] = field(default_factory=tuple)
     known_risks: tuple[str, ...] = field(default_factory=tuple)
     fallback_scores: dict[str, int] = field(default_factory=dict)
+    source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
+    live_findings: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -53,6 +73,8 @@ class VendorScore:
     evidence_urls: tuple[str, ...] = field(default_factory=tuple)
     strengths: tuple[str, ...] = field(default_factory=tuple)
     risks: tuple[str, ...] = field(default_factory=tuple)
+    source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
+    live_findings: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

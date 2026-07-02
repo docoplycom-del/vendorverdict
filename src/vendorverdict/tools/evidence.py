@@ -1,34 +1,135 @@
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 
+import requests
+
 from vendorverdict.data_loader import load_fallback_vendors
-from vendorverdict.models import VendorEvidence
+from vendorverdict.models import SourceCheck, VendorEvidence
 
 
 class EvidenceCollector:
-    """Collect vendor evidence.
+    """Collect fallback and live official-source evidence for vendors.
 
-    Current MVP behavior: use curated fallback evidence for reliability.
-    Next iteration: add live search/fetching and merge official-source findings
-    into the returned VendorEvidence object.
+    The fallback database is still the source of demo reliability. Live source
+    checks are additive: if the internet, a vendor page, or a firewall fails,
+    VendorVerdict still produces a useful procurement review.
     """
 
-    def __init__(self) -> None:
+    SOURCE_LABELS = (
+        ("security", "security_url"),
+        ("pricing", "pricing_url"),
+        ("privacy", "privacy_url"),
+        ("docs", "docs_url"),
+    )
+
+    def __init__(self, use_live_checks: bool | None = None, timeout_seconds: float = 3.0) -> None:
         self._vendors = load_fallback_vendors()
+        self.timeout_seconds = timeout_seconds
+        self._cache: dict[str, VendorEvidence] = {}
+
+        if use_live_checks is None:
+            env_value = os.getenv("VENDORVERDICT_LIVE_EVIDENCE", "1").strip().lower()
+            self.use_live_checks = env_value not in {"0", "false", "no", "off"}
+        else:
+            self.use_live_checks = use_live_checks
 
     @property
     def known_vendor_names(self) -> list[str]:
         return sorted((vendor.name for vendor in self._vendors.values()), key=str.lower)
 
     def get(self, vendor_name: str) -> VendorEvidence:
-        vendor = self._vendors.get(vendor_name.lower())
-        if vendor:
-            return vendor
-        return self._unknown_vendor(vendor_name)
+        normalized = vendor_name.lower().strip()
+        if normalized in self._cache:
+            return self._cache[normalized]
+
+        vendor = self._vendors.get(normalized) or self._unknown_vendor(vendor_name)
+        if self.use_live_checks:
+            vendor = self.with_live_evidence(vendor)
+
+        self._cache[normalized] = vendor
+        return vendor
 
     def get_many(self, vendor_names: list[str] | tuple[str, ...]) -> list[VendorEvidence]:
         return [self.get(name) for name in vendor_names]
+
+    def with_live_evidence(self, evidence: VendorEvidence) -> VendorEvidence:
+        """Check official-source target URLs and merge the result into evidence."""
+        targets = [
+            (label, getattr(evidence, attr))
+            for label, attr in self.SOURCE_LABELS
+            if getattr(evidence, attr, "")
+        ]
+        if not targets:
+            return replace(
+                evidence,
+                live_findings=("No official-source target URLs are configured yet.",),
+            )
+
+        checks: list[SourceCheck] = []
+        with ThreadPoolExecutor(max_workers=min(4, len(targets))) as executor:
+            futures = [executor.submit(self._check_url, label, url) for label, url in targets]
+            for future in as_completed(futures):
+                checks.append(future.result())
+
+        checks.sort(key=lambda item: [label for label, _ in self.SOURCE_LABELS].index(item.label))
+        reachable = sum(1 for check in checks if check.ok)
+        total = len(checks)
+        findings = (
+            f"Live official-source check: {reachable}/{total} configured sources reachable.",
+        )
+        return replace(evidence, source_checks=tuple(checks), live_findings=findings)
+
+    def with_live_evidence_placeholder(self, evidence: VendorEvidence) -> VendorEvidence:
+        """Backward-compatible alias kept for older skeleton code."""
+        return self.with_live_evidence(evidence)
+
+    def _check_url(self, label: str, url: str) -> SourceCheck:
+        headers = {
+            "User-Agent": "VendorVerdict/0.1 (+https://github.com/vendorverdict/hackathon)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+        try:
+            response = requests.head(
+                url,
+                allow_redirects=True,
+                timeout=self.timeout_seconds,
+                headers=headers,
+            )
+            # Some sites reject HEAD even when GET works.
+            if response.status_code in {403, 405} or response.status_code >= 500:
+                response = requests.get(
+                    url,
+                    allow_redirects=True,
+                    timeout=self.timeout_seconds,
+                    headers=headers,
+                )
+
+            status = int(response.status_code)
+            ok = 200 <= status < 400
+            final_url = response.url or url
+            redirected = final_url.rstrip("/") != url.rstrip("/")
+            note = "reachable" if ok else f"returned HTTP {status}"
+            if redirected:
+                note = f"{note}; redirected"
+            return SourceCheck(
+                label=label,
+                url=url,
+                ok=ok,
+                status_code=status,
+                note=note,
+                final_url=final_url if redirected else None,
+            )
+        except requests.RequestException as exc:
+            return SourceCheck(
+                label=label,
+                url=url,
+                ok=False,
+                status_code=None,
+                note=f"unreachable: {exc.__class__.__name__}",
+            )
 
     def _unknown_vendor(self, vendor_name: str) -> VendorEvidence:
         # Unknown vendors should still produce a usable output with low confidence.
@@ -46,7 +147,3 @@ class EvidenceCollector:
                 "operational_maturity": 55,
             },
         )
-
-    def with_live_evidence_placeholder(self, evidence: VendorEvidence) -> VendorEvidence:
-        """Reserved extension point for live web research."""
-        return replace(evidence)

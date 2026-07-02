@@ -24,6 +24,18 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
     sme_fit = _bounded(scores.get("sme_fit", DEFAULT_SCORE))
     maturity = _bounded(scores.get("operational_maturity", DEFAULT_SCORE))
 
+    # Use live official-source checks as small evidence nudges, not as a full
+    # audit. This keeps the rubric transparent and avoids overclaiming.
+    if _source_ok(evidence, "security"):
+        security += 2
+        maturity += 1
+    if _source_ok(evidence, "privacy"):
+        privacy += 2
+    if _source_ok(evidence, "pricing"):
+        pricing += 1
+    if _source_ok(evidence, "docs"):
+        maturity += 1
+
     # Nudge the scoring for sensitive data: security/privacy matter more in the
     # explanation, but keep weights simple for the MVP. This preserves the fixed
     # rubric while penalizing obviously weaker sensitive-data fit.
@@ -36,10 +48,10 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
     component_scores = {
         "security": _bounded(security),
         "privacy": _bounded(privacy),
-        "pricing_predictability": pricing,
+        "pricing_predictability": _bounded(pricing),
         "lock_in": lock_in,
         "sme_fit": sme_fit,
-        "operational_maturity": maturity,
+        "operational_maturity": _bounded(maturity),
     }
     weighted = sum(component_scores[key] * weight for key, weight in WEIGHTS.items()) / 100
     confidence = _confidence_for(evidence)
@@ -68,6 +80,8 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
         evidence_urls=urls,
         strengths=evidence.known_strengths,
         risks=evidence.known_risks,
+        source_checks=evidence.source_checks,
+        live_findings=evidence.live_findings,
     )
 
 
@@ -77,14 +91,19 @@ def rank_vendors(vendors: list[VendorEvidence], request: VendorRequest) -> tuple
 
 
 def _confidence_for(evidence: VendorEvidence) -> str:
+    reachable_count = sum(1 for check in evidence.source_checks if check.ok)
     official_url_count = sum(
         1 for url in (evidence.security_url, evidence.pricing_url, evidence.privacy_url, evidence.docs_url) if url
     )
-    if official_url_count >= 3 and evidence.fallback_scores:
+    if reachable_count >= 3:
+        return "High"
+    if reachable_count >= 1 or (official_url_count >= 3 and evidence.fallback_scores):
         return "Medium"
-    if official_url_count >= 1:
-        return "Low"
     return "Low"
+
+
+def _source_ok(evidence: VendorEvidence, label: str) -> bool:
+    return any(check.label == label and check.ok for check in evidence.source_checks)
 
 
 def _bounded(value: int) -> int:

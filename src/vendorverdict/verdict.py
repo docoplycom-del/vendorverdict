@@ -34,8 +34,9 @@ def build_vendor_verdict(raw_query: str, collector: EvidenceCollector | None = N
     )
 
 
-def render_response(raw_query: str) -> str:
-    verdict = build_vendor_verdict(raw_query)
+def render_response(raw_query: str, use_live_evidence: bool | None = None) -> str:
+    collector = EvidenceCollector(use_live_checks=use_live_evidence)
+    verdict = build_vendor_verdict(raw_query, collector=collector)
     request = verdict.request
 
     if request.missing_fields:
@@ -86,6 +87,10 @@ def render_response(raw_query: str) -> str:
         lines.append("- Risks to check:")
         for risk in score.risks[:3] or ("No curated risk notes available yet.",):
             lines.append(f"  - {risk}")
+        if score.live_findings:
+            lines.append("- Live evidence:")
+            for finding in score.live_findings:
+                lines.append(f"  - {finding}")
     lines.append("")
     lines.append("Due-diligence email:")
     lines.append("```text")
@@ -94,7 +99,14 @@ def render_response(raw_query: str) -> str:
     lines.append("")
     lines.append("Sources and confidence:")
     for score in verdict.scores:
-        if score.evidence_urls:
+        if score.source_checks:
+            lines.append(f"- {score.vendor} official-source checks:")
+            for check in score.source_checks:
+                status = "reachable" if check.ok else "not reachable"
+                status_code = f" HTTP {check.status_code}" if check.status_code is not None else ""
+                redirected = f" (redirected to {check.final_url})" if check.final_url else ""
+                lines.append(f"  - {check.label}: {status}{status_code} — {check.url}{redirected}")
+        elif score.evidence_urls:
             joined_urls = ", ".join(score.evidence_urls)
             lines.append(f"- {score.vendor}: fallback official-source targets: {joined_urls}")
         else:
