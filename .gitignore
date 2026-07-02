@@ -21,3 +21,10 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+
+
+
+*.pyc
+dist/
+build/
