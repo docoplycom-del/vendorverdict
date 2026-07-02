@@ -1,0 +1,6 @@
+{
+    "last_review_prompt:agent1qv7aaqzzgpfwz5tquhrfvgkq07w6vukq4g34jhwmk54ggpz53pdsvvhnk97": "@agent1qgcqf94pr5sevh2c8em36xj0g8ef8ycz50aw4vcqgaawlgv84ceej8wnrun @vendorverdict Compare Notion, Airtable, and Coda for storing client project data for a 10-person consulting startup in the UK. Rank them by privacy, security, pricing risk, lock-in, and SME suitability. Give me the safest recommendation and draft an email I can send to the chosen vendor.",
+    "payment:agent1qv7aaqzzgpfwz5tquhrfvgkq07w6vukq4g34jhwmk54ggpz53pdsvvhnk97:d6dc0e98-2c08-493e-be5c-66aa45e78a49:prompt": "@agent1qgcqf94pr5sevh2c8em36xj0g8ef8ycz50aw4vcqgaawlgv84ceej8wnrun @vendorverdict Compare Notion, Airtable, and Coda for storing client project data for a 10-person consulting startup in the UK. Rank them by privacy, security, pricing risk, lock-in, and SME suitability. Give me the safest recommendation and draft an email I can send to the chosen vendor.",
+    "payment:agent1qv7aaqzzgpfwz5tquhrfvgkq07w6vukq4g34jhwmk54ggpz53pdsvvhnk97:d6dc0e98-2c08-493e-be5c-66aa45e78a49:sku": "premium_vendor_dossier",
+    "payment:agent1qv7aaqzzgpfwz5tquhrfvgkq07w6vukq4g34jhwmk54ggpz53pdsvvhnk97:latest:reference": "d6dc0e98-2c08-493e-be5c-66aa45e78a49"
+}

@@ -19,7 +19,7 @@ It is built for the Fetch.ai Innovation Lab / UK AI Agent Hack. The primary work
 | Intended Agentverse handle | `@vendorverdict` |
 | Agent address | `agent1qgcqf94pr5sevh2c8em36xj0g8ef8ycz50aw4vcqgaawlgv84ceej8wnrun` |
 | Category | Innovation Lab / procurement / vendor-risk / SME tools |
-| Protocol | Agent Chat Protocol |
+| Protocols | Agent Chat Protocol + Payment Protocol seller flow |
 | ASI:One status | Tested through Agentverse / ASI:One chat |
 | GitHub repo | `https://github.com/docoplycom-del/vendorverdict` |
 
@@ -80,6 +80,7 @@ vendorverdict --demo --no-live-evidence
 - Ready-to-send due-diligence email.
 - Source and confidence notes.
 - Graceful fallback behavior when live checks fail.
+- Optional Payment Protocol request for the paid Premium Vendor Dossier.
 
 ---
 
@@ -127,6 +128,68 @@ Multi-agent collaboration completed:
 5. Email Agent drafted the due-diligence email.
 6. Critic Agent reviewed confidence and evidence gaps.
 ```
+
+---
+
+## Payment Protocol + monetization
+
+VendorVerdict keeps the basic review free, then offers a paid upgrade:
+
+```text
+Free review:
+- vendor comparison or single-vendor audit
+- live official-source checks
+- risk scorecard
+- recommendation
+- due-diligence email
+
+Paid upgrade:
+- Premium Vendor Dossier
+```
+
+The Premium Vendor Dossier is a credible paid product for SMEs and consultants. It adds:
+
+- executive procurement memo,
+- approval conditions,
+- vendor risk register,
+- rollout checklist,
+- expanded due-diligence questionnaire,
+- evidence appendix.
+
+Demo price:
+
+```text
+0.05 FET
+```
+
+Business model:
+
+```text
+£3–£10 per premium vendor dossier
+£29/month for small-team review bundles
+pay-per-call API for other procurement or compliance agents
+```
+
+Payment flow in ASI:One:
+
+```text
+1. User requests a normal free review.
+2. VendorVerdict returns the free analysis and due-diligence email.
+3. User says: “Upgrade to Premium Vendor Dossier.”
+4. VendorVerdict sends a Fetch.ai Payment Protocol RequestPayment message.
+5. Buyer commits payment.
+6. VendorVerdict verifies or demo-verifies the payment.
+7. VendorVerdict returns the premium report in the same ASI:One conversation.
+```
+
+The public agent includes the Payment Protocol as a seller-side protocol when the runtime supports it. For hackathon demos, `VENDORVERDICT_PAYMENT_DEMO_MODE=1` allows the Payment Protocol flow to be shown without requiring real funds. Set it to `0` for real FET verification through `cosmpy`.
+
+Local premium demo:
+
+```bash
+vendorverdict --premium-demo --no-live-evidence
+```
+
 
 ---
 
@@ -228,6 +291,7 @@ Expected startup signals:
 Starting agent with address: agent1...
 Starting mailbox client for https://agentverse.ai
 Manifest published successfully: AgentChatProtocol
+Manifest published successfully: AgentPaymentProtocol
 Agent registration status updated to active
 ```
 
@@ -243,6 +307,10 @@ A warning about insufficient funds for on-chain Almanac contract registration do
 | `AGENT_PORT` | `8001` | Local agent port |
 | `AGENT_SEED` | development placeholder | Stable private seed for the agent identity |
 | `VENDORVERDICT_LIVE_EVIDENCE` | `1` | Set to `0` to disable live official-source checks |
+| `VENDORVERDICT_PAYMENT_ENABLED` | `1` | Enables the premium report Payment Protocol flow |
+| `VENDORVERDICT_PREMIUM_PRICE_FET` | `0.05` | Demo price for the Premium Vendor Dossier |
+| `FET_USE_TESTNET` | `true` | Uses Fetch.ai testnet settings for payment verification |
+| `VENDORVERDICT_PAYMENT_DEMO_MODE` | `1` | Accepts committed payments for demo flow; set `0` for chain verification |
 
 ---
 
@@ -258,6 +326,9 @@ src/vendorverdict/
   emailer.py            # Due-diligence email artifact
   agents/               # Specialist multi-agent collaboration layer
     multiagent.py       # Intent, evidence, scoring, recommendation, email, critic agents
+  payment/              # Payment Protocol + premium dossier monetization
+    payment_proto.py    # Seller-side RequestPayment / CommitPayment flow
+    premium_report.py   # Paid Premium Vendor Dossier renderer
   tools/evidence.py     # Live official-source checks + fallback evidence collector
   data/fallback_vendors.json
 
@@ -267,9 +338,12 @@ tests/
   test_scoring.py
   test_evidence.py
   test_verdict.py
+  test_payment.py
 
 docs/
   MVP_CONTRACT.md
+  MULTI_AGENT_COLLABORATION.md
+  PAYMENT_PROTOCOL.md
 ```
 
 ---
@@ -283,7 +357,7 @@ python -m unittest discover -s tests -v
 Expected:
 
 ```text
-Ran 11 tests
+Ran 16 tests
 OK
 ```
 
@@ -295,7 +369,8 @@ OK
 - It checks configured official URLs rather than doing open-ended search across the web.
 - It provides procurement guidance, not legal advice or a formal security audit.
 - The specialist worker agents currently run behind one public Agentverse agent for demo reliability.
-- Interactive ASI:One cards and payment flows are stretch features.
+- Interactive ASI:One cards are a stretch feature.
+- Payment verification is demo-friendly by default; production mode requires funded wallets and chain verification.
 
 ---
 
@@ -305,7 +380,7 @@ OK
 2. Add richer evidence extraction from official pages.
 3. Optionally publish the specialist worker agents as separate Agentverse agents.
 4. Add ASI:One interactive cards for ranked comparisons.
-5. Add a credible premium report/payment flow as a stretch feature.
+5. Deploy continuously on a VM/cloud host.
 
 ---
 
@@ -318,8 +393,9 @@ OK
 5. Highlight live official-source checks.
 6. Highlight the ranked scoring table.
 7. Highlight the generated due-diligence email.
-8. Explain fallback reliability and why it still works if websites fail.
-9. Close with the real-world impact: faster, safer SaaS decisions for SMEs.
+8. Trigger “Upgrade to Premium Vendor Dossier” to show the Payment Protocol monetization path.
+9. Explain fallback reliability and why it still works if websites fail.
+10. Close with the real-world impact: faster, safer SaaS decisions for SMEs.
 
 ---
 

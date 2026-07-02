@@ -14,6 +14,14 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
+from vendorverdict.payment import render_payment_offer, render_upgrade_cta, wants_premium_report
+from vendorverdict.payment.payment_proto import (
+    payment_enabled,
+    payment_protocol,
+    payment_protocol_available,
+    request_premium_payment,
+    set_agent_wallet,
+)
 from vendorverdict.verdict import render_response
 
 load_dotenv()
@@ -29,6 +37,7 @@ agent = Agent(
     mailbox=True,
     publish_agent_details=True,
 )
+set_agent_wallet(agent.wallet)
 
 protocol = Protocol(spec=chat_protocol_spec)
 
@@ -63,7 +72,26 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
     user_text = "\n".join(text_chunks).strip()
 
     try:
+        if wants_premium_report(user_text):
+            base_prompt = ctx.storage.get(f"last_review_prompt:{sender}") or user_text
+            if payment_enabled() and payment_protocol_available():
+                reference = await request_premium_payment(ctx, sender, base_prompt)
+                await ctx.send(sender, _chat_response(render_payment_offer(reference)))
+                return
+            await ctx.send(
+                sender,
+                _chat_response(
+                    "Payment Protocol is not enabled in this runtime, but this is the paid product flow:\n\n"
+                    + render_payment_offer()
+                ),
+            )
+            return
+
         response = render_response(user_text)
+        if user_text:
+            ctx.storage.set(f"last_review_prompt:{sender}", user_text)
+        if not response.startswith("Which vendors") and not response.startswith("What will"):
+            response = response + "\n\n" + render_upgrade_cta()
     except Exception:
         ctx.logger.exception("VendorVerdict failed while building response")
         response = (
@@ -80,6 +108,8 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
 
 
 agent.include(protocol, publish_manifest=True)
+if payment_protocol is not None:
+    agent.include(payment_protocol, publish_manifest=True)
 
 if __name__ == "__main__":
     agent.run()

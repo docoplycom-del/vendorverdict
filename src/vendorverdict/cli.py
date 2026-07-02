@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from .payment.premium_report import render_premium_dossier
 from .verdict import render_response
 
 DEMO_QUERY = (
@@ -16,6 +17,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run VendorVerdict locally without Agentverse.")
     parser.add_argument("query", nargs="*", help="Natural-language vendor comparison request.")
     parser.add_argument("--demo", action="store_true", help="Run the default Notion/Airtable/Coda demo.")
+    parser.add_argument("--premium-demo", action="store_true", help="Run the paid Premium Vendor Dossier demo.")
     parser.add_argument(
         "--no-live-evidence",
         action="store_true",
@@ -23,8 +25,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    query = DEMO_QUERY if args.demo or not args.query else " ".join(args.query)
-    print(render_response(query, use_live_evidence=not args.no_live_evidence))
+    query = DEMO_QUERY if args.demo or args.premium_demo or not args.query else " ".join(args.query)
+    if args.premium_demo:
+        print(render_premium_dossier(query, use_live_evidence=not args.no_live_evidence))
+    else:
+        print(render_response(query, use_live_evidence=not args.no_live_evidence))
 
 
 if __name__ == "__main__":
