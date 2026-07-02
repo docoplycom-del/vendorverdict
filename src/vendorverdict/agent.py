@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -35,7 +35,7 @@ protocol = Protocol(spec=chat_protocol_spec)
 
 def _chat_response(text: str) -> ChatMessage:
     return ChatMessage(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         msg_id=uuid4(),
         content=[
             TextContent(type="text", text=text),
