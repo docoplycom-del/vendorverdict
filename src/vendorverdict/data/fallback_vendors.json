@@ -1,0 +1,269 @@
+[
+  {
+    "name": "Notion",
+    "category": "workspace",
+    "security_url": "https://www.notion.com/security",
+    "pricing_url": "https://www.notion.com/pricing",
+    "privacy_url": "https://www.notion.com/privacy",
+    "docs_url": "https://www.notion.com/help",
+    "known_strengths": [
+      "Strong SME usability and quick onboarding",
+      "Flexible workspace for docs, tasks, lightweight databases",
+      "Recognizable vendor with public security and privacy information"
+    ],
+    "known_risks": [
+      "Workspace governance can become complex as teams grow",
+      "Structured data export and migration should be checked before storing critical client records"
+    ],
+    "fallback_scores": {
+      "security": 78,
+      "privacy": 80,
+      "pricing_predictability": 84,
+      "lock_in": 70,
+      "sme_fit": 92,
+      "operational_maturity": 82
+    }
+  },
+  {
+    "name": "Airtable",
+    "category": "database/workflow",
+    "security_url": "https://www.airtable.com/security",
+    "pricing_url": "https://www.airtable.com/pricing",
+    "privacy_url": "https://www.airtable.com/privacy",
+    "docs_url": "https://support.airtable.com/",
+    "known_strengths": [
+      "Excellent fit for structured workflows and operational databases",
+      "Flexible automations and integrations",
+      "Good choice when the business process is table-centric"
+    ],
+    "known_risks": [
+      "Costs can rise with scale, seats, records, and advanced features",
+      "Data models and automations may create meaningful workflow lock-in"
+    ],
+    "fallback_scores": {
+      "security": 80,
+      "privacy": 78,
+      "pricing_predictability": 70,
+      "lock_in": 65,
+      "sme_fit": 88,
+      "operational_maturity": 84
+    }
+  },
+  {
+    "name": "Coda",
+    "category": "workspace",
+    "security_url": "https://coda.io/security",
+    "pricing_url": "https://coda.io/pricing",
+    "privacy_url": "https://coda.io/trust/privacy",
+    "docs_url": "https://help.coda.io/",
+    "known_strengths": [
+      "Flexible document-app model",
+      "Good for teams that want docs, tables, and lightweight workflows together",
+      "Pricing can be appealing for small teams depending on maker/editor mix"
+    ],
+    "known_risks": [
+      "Less obvious default choice for non-technical client-project operations",
+      "Workflow portability should be checked if documents become app-like"
+    ],
+    "fallback_scores": {
+      "security": 72,
+      "privacy": 74,
+      "pricing_predictability": 80,
+      "lock_in": 68,
+      "sme_fit": 75,
+      "operational_maturity": 76
+    }
+  },
+  {
+    "name": "Asana",
+    "category": "project management",
+    "security_url": "https://asana.com/security",
+    "pricing_url": "https://asana.com/pricing",
+    "privacy_url": "https://asana.com/terms#privacy-policy",
+    "docs_url": "https://help.asana.com/",
+    "known_strengths": [
+      "Purpose-built project management workflow",
+      "Good task tracking, accountability, and collaboration features"
+    ],
+    "known_risks": [
+      "May be too project-management-specific if the team also needs a knowledge base",
+      "Advanced admin/security features can be plan-dependent"
+    ],
+    "fallback_scores": {
+      "security": 79,
+      "privacy": 78,
+      "pricing_predictability": 74,
+      "lock_in": 72,
+      "sme_fit": 86,
+      "operational_maturity": 84
+    }
+  },
+  {
+    "name": "ClickUp",
+    "category": "project management",
+    "security_url": "https://clickup.com/security",
+    "pricing_url": "https://clickup.com/pricing",
+    "privacy_url": "https://clickup.com/privacy",
+    "docs_url": "https://help.clickup.com/",
+    "known_strengths": [
+      "Broad project management feature set",
+      "Good value proposition for teams wanting many features in one tool"
+    ],
+    "known_risks": [
+      "Feature breadth can increase configuration and adoption complexity",
+      "Migration risk increases if a team deeply customizes workflows"
+    ],
+    "fallback_scores": {
+      "security": 76,
+      "privacy": 76,
+      "pricing_predictability": 78,
+      "lock_in": 66,
+      "sme_fit": 83,
+      "operational_maturity": 78
+    }
+  },
+  {
+    "name": "Monday.com",
+    "category": "work management",
+    "security_url": "https://monday.com/trustcenter",
+    "pricing_url": "https://monday.com/pricing",
+    "privacy_url": "https://monday.com/l/privacy/privacy-policy/",
+    "docs_url": "https://support.monday.com/",
+    "known_strengths": [
+      "Strong visual workflow management",
+      "Good template ecosystem for SMB operations"
+    ],
+    "known_risks": [
+      "Pricing and plan limits should be checked against expected team growth",
+      "Highly customized boards can create process lock-in"
+    ],
+    "fallback_scores": {
+      "security": 78,
+      "privacy": 77,
+      "pricing_predictability": 68,
+      "lock_in": 64,
+      "sme_fit": 84,
+      "operational_maturity": 83
+    }
+  },
+  {
+    "name": "Slack",
+    "category": "communications",
+    "security_url": "https://slack.com/security",
+    "pricing_url": "https://slack.com/pricing",
+    "privacy_url": "https://slack.com/trust/privacy/privacy-policy",
+    "docs_url": "https://slack.com/help",
+    "known_strengths": [
+      "Very strong collaboration and integration ecosystem",
+      "Mature operational footprint"
+    ],
+    "known_risks": [
+      "Not a system of record for structured client project data",
+      "Knowledge can become fragmented across channels"
+    ],
+    "fallback_scores": {
+      "security": 86,
+      "privacy": 82,
+      "pricing_predictability": 72,
+      "lock_in": 62,
+      "sme_fit": 85,
+      "operational_maturity": 90
+    }
+  },
+  {
+    "name": "HubSpot",
+    "category": "CRM",
+    "security_url": "https://legal.hubspot.com/security",
+    "pricing_url": "https://www.hubspot.com/pricing",
+    "privacy_url": "https://legal.hubspot.com/privacy-policy",
+    "docs_url": "https://knowledge.hubspot.com/",
+    "known_strengths": [
+      "Strong CRM and go-to-market platform for SMEs",
+      "Good documentation and operational maturity"
+    ],
+    "known_risks": [
+      "Costs can increase significantly as hubs, contacts, and seats grow",
+      "Deep CRM adoption can create meaningful migration cost"
+    ],
+    "fallback_scores": {
+      "security": 83,
+      "privacy": 81,
+      "pricing_predictability": 60,
+      "lock_in": 58,
+      "sme_fit": 82,
+      "operational_maturity": 88
+    }
+  },
+  {
+    "name": "Google Workspace",
+    "category": "productivity suite",
+    "security_url": "https://workspace.google.com/security/",
+    "pricing_url": "https://workspace.google.com/pricing.html",
+    "privacy_url": "https://workspace.google.com/terms/user_features.html",
+    "docs_url": "https://support.google.com/a/",
+    "known_strengths": [
+      "Mature productivity suite with broad SME adoption",
+      "Strong admin ecosystem and documentation"
+    ],
+    "known_risks": [
+      "Vendor concentration risk if the business depends heavily on the ecosystem",
+      "Admin/security setup still requires deliberate configuration"
+    ],
+    "fallback_scores": {
+      "security": 90,
+      "privacy": 84,
+      "pricing_predictability": 82,
+      "lock_in": 66,
+      "sme_fit": 88,
+      "operational_maturity": 94
+    }
+  },
+  {
+    "name": "Microsoft 365",
+    "category": "productivity suite",
+    "security_url": "https://www.microsoft.com/trust-center/security",
+    "pricing_url": "https://www.microsoft.com/microsoft-365/business/compare-all-microsoft-365-business-products",
+    "privacy_url": "https://privacy.microsoft.com/privacystatement",
+    "docs_url": "https://learn.microsoft.com/microsoft-365/",
+    "known_strengths": [
+      "Mature enterprise-grade productivity and identity ecosystem",
+      "Strong security/admin tooling when configured well"
+    ],
+    "known_risks": [
+      "Can be complex for small teams without admin expertise",
+      "Plan selection and licensing can be confusing"
+    ],
+    "fallback_scores": {
+      "security": 92,
+      "privacy": 84,
+      "pricing_predictability": 76,
+      "lock_in": 62,
+      "sme_fit": 82,
+      "operational_maturity": 95
+    }
+  },
+  {
+    "name": "Linear",
+    "category": "issue tracking",
+    "security_url": "https://linear.app/security",
+    "pricing_url": "https://linear.app/pricing",
+    "privacy_url": "https://linear.app/privacy",
+    "docs_url": "https://linear.app/docs",
+    "known_strengths": [
+      "Fast issue tracking for product and engineering teams",
+      "Good developer-focused UX"
+    ],
+    "known_risks": [
+      "Narrower fit outside product/engineering workflows",
+      "Should not be treated as a general client-data system of record"
+    ],
+    "fallback_scores": {
+      "security": 78,
+      "privacy": 76,
+      "pricing_predictability": 80,
+      "lock_in": 72,
+      "sme_fit": 78,
+      "operational_maturity": 80
+    }
+  }
+]
