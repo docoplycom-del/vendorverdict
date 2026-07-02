@@ -113,9 +113,22 @@ def _extract_use_case(query: str) -> str:
     for pattern in patterns:
         match = re.search(pattern, query, flags=re.IGNORECASE)
         if match:
-            value = match.group(1).strip(" .")
+            value = _clean_use_case(match.group(1).strip(" ."))
             return value[:1].lower() + value[1:] if value else ""
     return ""
+
+
+def _clean_use_case(value: str) -> str:
+    # Keep the actual job-to-be-done, not team/location context.
+    stop_patterns = [
+        r"\s+for\s+(?:a|an|the)?\s*\d+\s*[- ]?(?:person|people)\b.*$",
+        r"\s+for\s+(?:a|an|the)?\s*(?:consulting startup|startup|small business|student society|agency|nonprofit|charity|freelance team)\b.*$",
+        r"\s+in\s+(?:the\s+)?(?:UK|United Kingdom|EU|Europe|US|USA|United States)\b.*$",
+    ]
+    cleaned = value
+    for pattern in stop_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip(" .")
 
 
 def _extract_team_size(query: str) -> str | None:

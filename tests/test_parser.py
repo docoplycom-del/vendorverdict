@@ -12,7 +12,7 @@ class ParserTests(unittest.TestCase):
         )
         request = parse_vendor_request(query, vendors)
         self.assertEqual(request.vendors, ("Notion", "Airtable", "Coda"))
-        self.assertIn("client project data", request.use_case)
+        self.assertEqual(request.use_case, "storing client project data")
         self.assertEqual(request.team_size, "10 people")
         self.assertEqual(request.business_type, "consulting startup")
         self.assertEqual(request.region, "UK")
