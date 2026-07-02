@@ -53,7 +53,10 @@ def parse_vendor_request(raw_query: str, known_vendor_names: list[str]) -> Vendo
     data_sensitivity = _infer_data_sensitivity(query_lower)
 
     missing: list[str] = []
-    if len(vendors) < 2:
+    # A single named vendor is a valid request: VendorVerdict should run a
+    # one-vendor risk audit instead of forcing every interaction to be a
+    # comparison. Zero vendors still requires a clarifying question.
+    if len(vendors) == 0:
         missing.append("vendors")
     if not use_case:
         missing.append("use_case")

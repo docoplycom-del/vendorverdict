@@ -49,44 +49,75 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
 
     winner = verdict.recommendation
     if not winner:
-        return "I could not identify enough vendors to compare. Please name 2–5 vendors and the use case."
+        return "I could not identify a vendor to review. Please name at least one vendor and the use case."
+
+    is_single_vendor_audit = len(request.vendors) == 1
 
     lines: list[str] = []
-    lines.append("🧾 VendorVerdict: SaaS Procurement Review")
-    lines.append("")
-    lines.append("I understood your goal:")
-    lines.append(f"Compare {', '.join(request.vendors)} for {request.use_case}.")
+    if is_single_vendor_audit:
+        lines.append("🧾 VendorVerdict: SaaS Vendor Risk Review")
+        lines.append("")
+        lines.append("I understood your goal:")
+        lines.append(f"Review {request.vendors[0]} for {request.use_case}.")
+    else:
+        lines.append("🧾 VendorVerdict: SaaS Procurement Review")
+        lines.append("")
+        lines.append("I understood your goal:")
+        lines.append(f"Compare {', '.join(request.vendors)} for {request.use_case}.")
     lines.append("")
     lines.append("Assumptions:")
     for assumption in verdict.assumptions:
         lines.append(f"- {assumption}")
     lines.append("")
     lines.append("Agent workflow completed:")
-    lines.append("1. Parsed procurement intent and extracted vendors/use case")
-    lines.append("2. Checked configured official vendor sources")
-    lines.append("3. Applied the vendor-risk scoring rubric")
-    lines.append("4. Ranked the options by practical procurement risk")
-    lines.append("5. Selected a recommended vendor")
-    lines.append("6. Generated a ready-to-send due-diligence email")
+    if is_single_vendor_audit:
+        lines.append("1. Parsed procurement intent and extracted vendor/use case")
+        lines.append("2. Checked configured official vendor sources")
+        lines.append("3. Applied the vendor-risk scoring rubric")
+        lines.append("4. Classified the vendor's practical procurement risk")
+        lines.append("5. Generated a ready-to-send due-diligence email")
+    else:
+        lines.append("1. Parsed procurement intent and extracted vendors/use case")
+        lines.append("2. Checked configured official vendor sources")
+        lines.append("3. Applied the vendor-risk scoring rubric")
+        lines.append("4. Ranked the options by practical procurement risk")
+        lines.append("5. Selected a recommended vendor")
+        lines.append("6. Generated a ready-to-send due-diligence email")
     lines.append("")
-    lines.append("🏆 Recommendation:")
-    lines.append(
-        f"{winner.vendor} is the safest MVP choice because it has the strongest overall balance "
-        f"for this use case in the current rubric."
-    )
-    lines.append("")
-    lines.append("Ranked verdict:")
-    lines.append(
-        "| Rank | Vendor | Overall | Security | Privacy | Pricing predictability | Portability / low lock-in | SME fit | Confidence |"
-    )
-    lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---|")
-    for idx, score in enumerate(verdict.scores, start=1):
+
+    if is_single_vendor_audit:
+        decision, decision_reason = _single_vendor_decision(winner)
+        lines.append("🏁 Vendor decision:")
+        lines.append(f"{decision}: {winner.vendor} {decision_reason}")
+        lines.append("")
+        lines.append("Risk scorecard:")
         lines.append(
-            f"| {idx} | {score.vendor} | {score.overall} | {score.security} | {score.privacy} | "
-            f"{score.pricing_predictability} | {score.lock_in} | {score.sme_fit} | {score.confidence} |"
+            "| Vendor | Overall | Security | Privacy | Pricing predictability | Portability / low lock-in | SME fit | Confidence |"
         )
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---|")
+        lines.append(
+            f"| {winner.vendor} | {winner.overall} | {winner.security} | {winner.privacy} | "
+            f"{winner.pricing_predictability} | {winner.lock_in} | {winner.sme_fit} | {winner.confidence} |"
+        )
+    else:
+        lines.append("🏆 Recommendation:")
+        lines.append(
+            f"{winner.vendor} is the safest MVP choice because it has the strongest overall balance "
+            f"for this use case in the current rubric."
+        )
+        lines.append("")
+        lines.append("Ranked verdict:")
+        lines.append(
+            "| Rank | Vendor | Overall | Security | Privacy | Pricing predictability | Portability / low lock-in | SME fit | Confidence |"
+        )
+        lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---|")
+        for idx, score in enumerate(verdict.scores, start=1):
+            lines.append(
+                f"| {idx} | {score.vendor} | {score.overall} | {score.security} | {score.privacy} | "
+                f"{score.pricing_predictability} | {score.lock_in} | {score.sme_fit} | {score.confidence} |"
+            )
     lines.append("")
-    lines.append("Vendor-by-vendor notes:")
+    lines.append("Vendor-by-vendor notes:" if not is_single_vendor_audit else "Vendor notes:")
     for score in verdict.scores:
         lines.append(f"\n{score.vendor}")
         lines.append("- Strengths:")
@@ -124,8 +155,12 @@ def render_response(raw_query: str, use_live_evidence: bool | None = None) -> st
     )
     lines.append("")
     lines.append("Next step:")
-    lines.append(f"Send the due-diligence email to {winner.vendor}, then rerun VendorVerdict with the vendor's answers.")
+    if is_single_vendor_audit:
+        lines.append(f"Send the due-diligence email to {winner.vendor}, then rerun VendorVerdict with the vendor's answers before rollout.")
+    else:
+        lines.append(f"Send the due-diligence email to {winner.vendor}, then rerun VendorVerdict with the vendor's answers.")
     return "\n".join(lines)
+
 
 
 def _build_assumptions(request: VendorRequest) -> tuple[str, ...]:
@@ -141,6 +176,24 @@ def _build_assumptions(request: VendorRequest) -> tuple[str, ...]:
         assumptions.append("Region was not specified, so regulatory analysis is general rather than jurisdiction-specific.")
     return tuple(assumptions)
 
+
+
+def _single_vendor_decision(score) -> tuple[str, str]:
+    """Return a concise go/caution/avoid-style decision for audit mode."""
+    if score.overall >= 80 and score.security >= 75 and score.privacy >= 75:
+        return (
+            "Good candidate",
+            "looks suitable for this use case, subject to confirming the due-diligence questions below.",
+        )
+    if score.overall >= 70:
+        return (
+            "Proceed with caution",
+            "may be usable, but security, privacy, pricing, and portability answers should be confirmed before storing sensitive business data.",
+        )
+    return (
+        "Needs further review",
+        "should not be selected for this use case until the key risk questions are answered.",
+    )
 
 def _overall_confidence(scores) -> str:
     if not scores:
