@@ -1,0 +1,19 @@
+[Unit]
+Description=VendorVerdict ASI:One Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vendorverdict
+Group=vendorverdict
+WorkingDirectory=/opt/vendorverdict
+EnvironmentFile=/etc/vendorverdict.env
+ExecStart=/opt/vendorverdict/.venv/bin/python -m vendorverdict.agent
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

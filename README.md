@@ -402,3 +402,41 @@ OK
 ## Safety note
 
 VendorVerdict provides procurement guidance based on public and fallback evidence. It is not legal advice, financial advice, or a formal security audit.
+
+
+## Post-hackathon operation plan
+
+VendorVerdict is designed to keep operating after the hackathon instead of only running on a laptop.
+
+Operational plan:
+
+- Run VendorVerdict as a continuously hosted uAgent on Azure Container Apps, Docker, or a small VM with `systemd`.
+- Keep the same private `AGENT_SEED` so the Agentverse identity and address remain stable.
+- Use Agentverse Mailbox for ASI:One message routing.
+- Use Docker health checks or `vendorverdict --health` to verify the deterministic fallback workflow.
+- Store secrets in environment variables or managed cloud secrets, never in Git.
+- Run GitHub Actions tests before every deployment.
+- Keep fallback evidence enabled so vendor website outages do not break the workflow.
+- Keep the free workflow available even if the Premium Vendor Dossier payment path is unavailable.
+
+Deployment assets included in this repo:
+
+```text
+Dockerfile
+docker-compose.yml
+.github/workflows/tests.yml
+.github/workflows/docker-build.yml
+deploy/systemd/vendorverdict.service.example
+deploy/systemd/vendorverdict.env.example
+deploy/azure/containerapp.env.example
+docs/OPERATIONS.md
+docs/AZURE_CONTAINER_APPS.md
+```
+
+Health check:
+
+```bash
+vendorverdict --health
+```
+
+This validates the parser, multi-agent workflow, fallback evidence, scoring, recommendation, and email rendering without depending on live vendor websites.
