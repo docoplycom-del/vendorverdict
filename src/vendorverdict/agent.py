@@ -53,7 +53,7 @@ async def startup(ctx: Context) -> None:
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
     await ctx.send(
         sender,
-        ChatAcknowledgement(timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id),
+        ChatAcknowledgement(timestamp=datetime.now(UTC), acknowledged_msg_id=msg.msg_id),
     )
 
     text_chunks: list[str] = []
