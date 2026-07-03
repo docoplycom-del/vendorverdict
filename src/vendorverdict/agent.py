@@ -55,6 +55,22 @@ set_agent_wallet(agent.wallet)
 
 protocol = Protocol(spec=chat_protocol_spec)
 
+# ASI:One may send clarification answers as separate messages.
+# Keep a small runtime fallback so short follow-up answers can be combined
+# with the previous incomplete vendor-comparison prompt.
+PENDING_PROMPTS: dict[str, str] = {}
+
+USE_CASE_HINTS = {
+    "client project data",
+    "internal docs",
+    "crm",
+    "project management",
+    "vendor management",
+    "knowledge base",
+    "task management",
+}
+
+
 
 def _chat_response(text: str) -> ChatMessage:
     return ChatMessage(
@@ -131,22 +147,34 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
             return
 
         pending_key = f"pending_review_prompt:{sender}"
-        pending_prompt = ctx.storage.get(pending_key) or ""
+        pending_prompt = (
+            ctx.storage.get(pending_key)
+            or PENDING_PROMPTS.get(sender)
+            or PENDING_PROMPTS.get("__last__")
+            or ""
+        )
 
         effective_user_text = user_text
+        user_text_lower = user_text.lower().strip()
 
         # ASI:One sends clarification answers as separate messages.
-        # If the previous turn was missing vendors/use case, combine the short follow-up
-        # with the earlier partial request so the parser has the full context.
-        if pending_prompt and user_text and len(user_text.split()) <= 12:
-            effective_user_text = pending_prompt + "\nAdditional answer: " + user_text
+        # Combine short follow-up answers like "project management" or
+        # "client project data" with the earlier incomplete prompt.
+        if pending_prompt and user_text and (
+            len(user_text.split()) <= 12 or user_text_lower in USE_CASE_HINTS
+        ):
+            effective_user_text = pending_prompt + "\nUse case: " + user_text
 
         response = render_response(effective_user_text)
 
         if response.startswith("Which vendors") or response.startswith("What will"):
             ctx.storage.set(pending_key, effective_user_text)
+            PENDING_PROMPTS[sender] = effective_user_text
+            PENDING_PROMPTS["__last__"] = effective_user_text
         else:
             ctx.storage.set(pending_key, "")
+            PENDING_PROMPTS.pop(sender, None)
+            PENDING_PROMPTS.pop("__last__", None)
             if effective_user_text:
                 ctx.storage.set(f"last_review_prompt:{sender}", effective_user_text)
             response = response + "\n\n" + render_upgrade_cta()
