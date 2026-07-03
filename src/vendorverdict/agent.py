@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from uagents import Agent, Context, Protocol
+from uagents import Agent, Context, Model, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
@@ -30,6 +30,19 @@ AGENT_NAME = os.getenv("AGENT_NAME", "vendorverdict")
 AGENT_SEED = os.getenv("AGENT_SEED", "vendorverdict-dev-seed-change-me-before-demo")
 AGENT_PORT = int(os.getenv("AGENT_PORT", "8001"))
 
+class HealthResponse(Model):
+    status: str
+    agent: str
+    address: str
+
+
+class InfoResponse(Model):
+    name: str
+    protocol: str
+    status: str
+    message: str
+
+
 agent = Agent(
     name=AGENT_NAME,
     seed=AGENT_SEED,
@@ -50,6 +63,22 @@ def _chat_response(text: str) -> ChatMessage:
             TextContent(type="text", text=text),
             EndSessionContent(type="end-session"),
         ],
+    )
+
+
+
+@agent.on_rest_get("/health", HealthResponse)
+async def health(ctx: Context) -> HealthResponse:
+    return HealthResponse(status="ok", agent=agent.name, address=str(agent.address))
+
+
+@agent.on_rest_get("/", InfoResponse)
+async def root(ctx: Context) -> InfoResponse:
+    return InfoResponse(
+        name=agent.name,
+        protocol="Agent Chat Protocol",
+        status="running",
+        message="VendorVerdict is live. Use Agentverse / ASI:One chat to interact with the agent.",
     )
 
 
