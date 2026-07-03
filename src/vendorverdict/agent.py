@@ -130,10 +130,25 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
             )
             return
 
-        response = render_response(user_text)
-        if user_text:
-            ctx.storage.set(f"last_review_prompt:{sender}", user_text)
-        if not response.startswith("Which vendors") and not response.startswith("What will"):
+        pending_key = f"pending_review_prompt:{sender}"
+        pending_prompt = ctx.storage.get(pending_key) or ""
+
+        effective_user_text = user_text
+
+        # ASI:One sends clarification answers as separate messages.
+        # If the previous turn was missing vendors/use case, combine the short follow-up
+        # with the earlier partial request so the parser has the full context.
+        if pending_prompt and user_text and len(user_text.split()) <= 12:
+            effective_user_text = pending_prompt + "\nAdditional answer: " + user_text
+
+        response = render_response(effective_user_text)
+
+        if response.startswith("Which vendors") or response.startswith("What will"):
+            ctx.storage.set(pending_key, effective_user_text)
+        else:
+            ctx.storage.set(pending_key, "")
+            if effective_user_text:
+                ctx.storage.set(f"last_review_prompt:{sender}", effective_user_text)
             response = response + "\n\n" + render_upgrade_cta()
     except Exception:
         ctx.logger.exception("VendorVerdict failed while building response")
