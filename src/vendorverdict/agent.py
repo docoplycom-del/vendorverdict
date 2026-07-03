@@ -117,6 +117,19 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
             text_chunks.append(item.text)
     user_text = "\n".join(text_chunks).strip()
 
+    # Make short ASI:One prompts demo-safe.
+    # Example: "What is better: Notion or Airtable"
+    # If the user gives vendors but no use case, add a default use case so
+    # the agent produces a comparison instead of entering a clarification loop.
+    lower_user_text = user_text.lower()
+    if (
+        "what is better" in lower_user_text
+        and " or " in lower_user_text
+        and "for " not in lower_user_text
+        and "use" not in lower_user_text
+    ):
+        user_text = user_text + " for general team productivity and project management"
+
     try:
         if wants_premium_report(user_text):
             base_prompt = ctx.storage.get(f"last_review_prompt:{sender}") or user_text
