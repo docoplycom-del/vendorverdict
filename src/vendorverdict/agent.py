@@ -30,7 +30,6 @@ load_dotenv()
 AGENT_NAME = os.getenv("AGENT_NAME", "vendorverdict")
 AGENT_SEED = os.getenv("AGENT_SEED", "vendorverdict-dev-seed-change-me-before-demo")
 AGENT_PORT = int(os.getenv("AGENT_PORT", "8001"))
-AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT", f"http://127.0.0.1:{AGENT_PORT}").rstrip("/")
 
 class HealthResponse(Model):
     status: str
@@ -49,7 +48,6 @@ agent = Agent(
     name=AGENT_NAME,
     seed=AGENT_SEED,
     port=AGENT_PORT,
-    endpoint=[f"{AGENT_ENDPOINT}/submit"],
     mailbox=True,
     publish_agent_details=True,
 )
