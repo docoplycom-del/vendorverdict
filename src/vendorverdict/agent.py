@@ -15,6 +15,7 @@ from uagents_core.contrib.protocols.chat import (
 )
 
 from vendorverdict.payment import render_payment_offer, render_upgrade_cta, wants_premium_report
+from vendorverdict.payment.premium_report import render_premium_dossier
 from vendorverdict.payment.payment_proto import (
     payment_enabled,
     payment_protocol,
@@ -103,10 +104,23 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
     try:
         if wants_premium_report(user_text):
             base_prompt = ctx.storage.get(f"last_review_prompt:{sender}") or user_text
+
+            if os.getenv("VENDORVERDICT_PAYMENT_DEMO_MODE", "1").lower() in {"1", "true", "yes"}:
+                await ctx.send(
+                    sender,
+                    _chat_response(
+                        "Demo Premium Vendor Dossier generated. "
+                        "In production, this upgrade is designed to be gated by a 0.05 FET Fetch.ai Payment Protocol request.\n\n"
+                        + render_premium_dossier(base_prompt)
+                    ),
+                )
+                return
+
             if payment_enabled() and payment_protocol_available():
                 reference = await request_premium_payment(ctx, sender, base_prompt)
                 await ctx.send(sender, _chat_response(render_payment_offer(reference)))
                 return
+
             await ctx.send(
                 sender,
                 _chat_response(
