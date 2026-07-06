@@ -27,8 +27,4 @@ venv/
 
 # Production local artifacts
 *.sqlite3
-*.db
 reports/
-data/
-
-agent*_data.json
