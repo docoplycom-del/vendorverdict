@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from vendorverdict.pdf_export import export_report_pdf as export_report_pdf
 from vendorverdict.storage import ReportStore
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_verdict

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from .payment.premium_report import render_premium_dossier
-from .reporting import export_report_markdown
+from .reporting import export_report_markdown, export_report_pdf
 from .storage import ReportStore
 from .tools.evidence import EvidenceCollector
 from .verdict import build_vendor_verdict, render_response, render_verdict
@@ -80,13 +80,14 @@ def main() -> None:
     parser.add_argument("--save-report", action="store_true", help="Persist the generated report to the local report store.")
     parser.add_argument("--db-path", help="SQLite report database path. Defaults to VENDORVERDICT_DB_PATH or ~/.vendorverdict/vendorverdict.sqlite3.")
     parser.add_argument("--export-markdown", action="store_true", help="Export a saved report to Markdown.")
+    parser.add_argument("--export-pdf", action="store_true", help="Export a saved report to PDF.")
     parser.add_argument("--export-dir", default="reports", help="Directory for Markdown report exports.")
     parser.add_argument("--list-reports", action="store_true", help="List recently saved reports.")
     parser.add_argument("--limit", type=int, default=10, help="Number of reports to list.")
     parser.add_argument("--show-report", help="Print a stored report's rendered response by report ID.")
     args = parser.parse_args()
 
-    store = ReportStore(args.db_path) if args.db_path or args.save_report or args.list_reports or args.show_report or args.export_markdown else None
+    store = ReportStore(args.db_path) if args.db_path or args.save_report or args.list_reports or args.show_report or args.export_markdown or args.export_pdf else None
 
     if args.health:
         raise SystemExit(run_health_check(use_live_evidence=args.live_health))
@@ -96,10 +97,17 @@ def main() -> None:
         return
 
     if args.show_report:
-        report = (store or ReportStore()).get_report(args.show_report)
+        report_store = store or ReportStore()
+        report = report_store.get_report(args.show_report)
         if report is None:
             raise SystemExit(f"Report not found: {args.show_report}")
         print(report["rendered_response"])
+        if args.export_markdown:
+            export_path = export_report_markdown(args.show_report, output_dir=Path(args.export_dir), store=report_store)
+            print(f"Exported Markdown: {export_path}")
+        if args.export_pdf:
+            export_path = export_report_pdf(args.show_report, output_dir=Path(args.export_dir), store=report_store)
+            print(f"Exported PDF: {export_path}")
         return
 
     query = DEMO_QUERY if args.demo or args.premium_demo or not args.query else " ".join(args.query)
@@ -127,6 +135,9 @@ def main() -> None:
         if args.export_markdown:
             export_path = export_report_markdown(report_id, output_dir=Path(args.export_dir), store=report_store)
             print(f"Exported Markdown: {export_path}")
+        if args.export_pdf:
+            export_path = export_report_pdf(report_id, output_dir=Path(args.export_dir), store=report_store)
+            print(f"Exported PDF: {export_path}")
         return
 
     print(render_response(query, use_live_evidence=not args.no_live_evidence))

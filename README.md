@@ -473,10 +473,10 @@ The CLI can save, list, show, and export reports:
 vendorverdict --demo --no-live-evidence --save-report
 vendorverdict --list-reports
 vendorverdict --show-report REPORT_ID
-vendorverdict --export-markdown REPORT_ID ./exports/report.md
+vendorverdict --show-report REPORT_ID --export-markdown --export-dir ./exports
 ```
 
-Reports are stored in SQLite by default at `~/.vendorverdict/vendorverdict.sqlite3`, or in a custom location with `--db` / `VENDORVERDICT_DB_PATH`.
+Reports are stored in SQLite by default at `~/.vendorverdict/vendorverdict.sqlite3`, or in a custom location with `--db-path` / `VENDORVERDICT_DB_PATH`.
 
 This makes the product more than a one-off chat answer: production users can retain vendor-risk reports, export them, and rerun them later as vendor evidence changes.
 
@@ -508,3 +508,28 @@ See `docs/PRODUCTION_V1.md` for details.
 VendorVerdict now includes a conservative source-discovery layer for vendors that are not yet in the curated fallback registry. When live evidence is enabled, the Evidence Agent can generate likely official domains, probe common trust/security/pricing/privacy/docs paths, and use reachable pages for evidence extraction.
 
 This helps production coverage expand beyond the initial curated SaaS list while keeping fallback behavior safe. Source discovery can be disabled with `VENDORVERDICT_SOURCE_DISCOVERY=0`.
+
+## PDF export for production reports
+
+VendorVerdict can now export saved reports as client-ready PDF files in addition to Markdown.
+
+PDF exports include:
+
+- report metadata and recommendation,
+- structured vendor scorecard,
+- multi-agent workflow summary,
+- Critic Agent notes,
+- evidence-backed findings with snippets and source URLs,
+- source snapshot,
+- due-diligence email,
+- procurement guidance disclaimer.
+
+Examples:
+
+```bash
+vendorverdict --demo --save-report --export-pdf --db-path ./data/vendorverdict.sqlite3 --export-dir ./reports
+vendorverdict --demo --save-report --export-markdown --export-pdf --db-path ./data/vendorverdict.sqlite3 --export-dir ./reports
+vendorverdict --show-report REPORT_ID --export-pdf --db-path ./data/vendorverdict.sqlite3 --export-dir ./reports
+```
+
+See `docs/PDF_EXPORT.md` for details.
