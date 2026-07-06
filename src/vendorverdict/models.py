@@ -8,11 +8,32 @@ Confidence = Literal["High", "Medium", "Low"]
 
 
 @dataclass(frozen=True)
+class EvidenceFinding:
+    """A concrete finding extracted from an official vendor source page.
+
+    Findings are intentionally conservative. They mean VendorVerdict found a
+    public signal in a source page, not that the vendor is definitively
+    compliant or safe. This makes production reports more trustworthy by
+    backing scoring notes with source URLs, snippets, confidence, and timestamps.
+    """
+
+    vendor: str
+    signal: str
+    label: str
+    source_label: str
+    source_url: str
+    snippet: str
+    confidence: Confidence
+    checked_at: str | None = None
+
+
+@dataclass(frozen=True)
 class SourceCheck:
     """Result of checking an official vendor source URL.
 
     This keeps live evidence separate from fallback evidence, so the demo can
-    degrade gracefully if a vendor page or network request fails.
+    degrade gracefully if a vendor page or network request fails. Live checks can
+    also carry extracted findings for production-grade report citations.
     """
 
     label: str
@@ -24,6 +45,7 @@ class SourceCheck:
     # Final URL after redirects, if different. This avoids making a
     # redirected vendor page look like the original configured source.
     final_url: str | None = None
+    findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -68,6 +90,7 @@ class VendorEvidence:
     fallback_scores: dict[str, int] = field(default_factory=dict)
     source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
     live_findings: tuple[str, ...] = field(default_factory=tuple)
+    extracted_findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -98,6 +121,7 @@ class VendorScore:
     risks: tuple[str, ...] = field(default_factory=tuple)
     source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
     live_findings: tuple[str, ...] = field(default_factory=tuple)
+    extracted_findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

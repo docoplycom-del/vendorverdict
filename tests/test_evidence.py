@@ -12,12 +12,14 @@ class EvidenceCollectorTests(unittest.TestCase):
         self.assertEqual(evidence.source_checks, ())
         self.assertEqual(evidence.live_findings, ())
 
-    @patch("vendorverdict.tools.evidence.requests.head")
-    def test_live_check_records_reachable_official_sources(self, mock_head):
+    @patch("vendorverdict.tools.evidence.requests.get")
+    def test_live_check_records_reachable_official_sources(self, mock_get):
         response = Mock()
         response.status_code = 200
         response.url = "https://www.notion.com/security"
-        mock_head.return_value = response
+        response.headers = {"content-type": "text/html"}
+        response.text = "SOC 2 encryption GDPR DPA SSO audit logs data export"
+        mock_get.return_value = response
 
         collector = EvidenceCollector(use_live_checks=True, timeout_seconds=0.1)
         evidence = collector.get("Notion")
@@ -25,6 +27,7 @@ class EvidenceCollectorTests(unittest.TestCase):
         self.assertGreaterEqual(len(evidence.source_checks), 1)
         self.assertTrue(any(check.ok for check in evidence.source_checks))
         self.assertTrue(evidence.live_findings)
+        self.assertTrue(evidence.extracted_findings)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import requests
 
 from vendorverdict.data_loader import load_fallback_vendors
 from vendorverdict.models import SourceCheck, VendorEvidence
+from vendorverdict.tools.evidence_extractor import extract_evidence_findings, summarize_findings
 
 
 class EvidenceCollector:
@@ -70,42 +71,44 @@ class EvidenceCollector:
 
         checks: list[SourceCheck] = []
         with ThreadPoolExecutor(max_workers=min(4, len(targets))) as executor:
-            futures = [executor.submit(self._check_url, label, url) for label, url in targets]
+            futures = [executor.submit(self._check_url, evidence.name, label, url) for label, url in targets]
             for future in as_completed(futures):
                 checks.append(future.result())
 
         checks.sort(key=lambda item: [label for label, _ in self.SOURCE_LABELS].index(item.label))
         reachable = sum(1 for check in checks if check.ok)
         total = len(checks)
-        findings = (
-            f"Live official-source check: {reachable}/{total} configured sources reachable.",
+        extracted_findings = tuple(finding for check in checks for finding in check.findings)
+        findings = [f"Live official-source check: {reachable}/{total} configured sources reachable."]
+        if extracted_findings:
+            findings.append(summarize_findings(extracted_findings))
+        else:
+            findings.append("No concrete evidence signals were extracted from reachable official pages.")
+        return replace(
+            evidence,
+            source_checks=tuple(checks),
+            live_findings=tuple(findings),
+            extracted_findings=extracted_findings,
         )
-        return replace(evidence, source_checks=tuple(checks), live_findings=findings)
 
     def with_live_evidence_placeholder(self, evidence: VendorEvidence) -> VendorEvidence:
         """Backward-compatible alias kept for older skeleton code."""
         return self.with_live_evidence(evidence)
 
-    def _check_url(self, label: str, url: str) -> SourceCheck:
+    def _check_url(self, vendor_name: str, label: str, url: str) -> SourceCheck:
         headers = {
-            "User-Agent": "VendorVerdict/0.1 (+https://github.com/vendorverdict/hackathon)",
+            "User-Agent": "VendorVerdict/0.1 (+https://github.com/docoplycom-del/vendorverdict)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
         try:
-            response = requests.head(
+            # Use GET for production evidence extraction. Some sites reject HEAD,
+            # and HEAD cannot provide page text for citations/snippets.
+            response = requests.get(
                 url,
                 allow_redirects=True,
                 timeout=self.timeout_seconds,
                 headers=headers,
             )
-            # Some sites reject HEAD even when GET works.
-            if response.status_code in {403, 405} or response.status_code >= 500:
-                response = requests.get(
-                    url,
-                    allow_redirects=True,
-                    timeout=self.timeout_seconds,
-                    headers=headers,
-                )
 
             status = int(response.status_code)
             ok = 200 <= status < 400
@@ -114,6 +117,17 @@ class EvidenceCollector:
             note = "reachable" if ok else f"returned HTTP {status}"
             if redirected:
                 note = f"{note}; redirected"
+
+            extracted = ()
+            content_type = response.headers.get("content-type", "") if hasattr(response, "headers") else ""
+            if ok and (not content_type or "text" in content_type or "html" in content_type):
+                extracted = extract_evidence_findings(
+                    response.text or "",
+                    vendor=vendor_name,
+                    source_url=final_url,
+                    source_label=label,
+                )
+
             return SourceCheck(
                 label=label,
                 url=url,
@@ -121,6 +135,7 @@ class EvidenceCollector:
                 status_code=status,
                 note=note,
                 final_url=final_url if redirected else None,
+                findings=extracted,
             )
         except requests.RequestException as exc:
             return SourceCheck(

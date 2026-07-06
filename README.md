@@ -330,6 +330,9 @@ src/vendorverdict/
     payment_proto.py    # Seller-side RequestPayment / CommitPayment flow
     premium_report.py   # Paid Premium Vendor Dossier renderer
   tools/evidence.py     # Live official-source checks + fallback evidence collector
+  tools/evidence_extractor.py  # Deterministic source-page signal extraction
+  reporting.py          # Report build/export helpers
+  storage.py            # SQLite report persistence
   data/fallback_vendors.json
 
 tests/
@@ -339,11 +342,17 @@ tests/
   test_evidence.py
   test_verdict.py
   test_payment.py
+  test_evidence_extractor.py
+  test_storage.py
+  test_storage_findings.py
 
 docs/
   MVP_CONTRACT.md
   MULTI_AGENT_COLLABORATION.md
   PAYMENT_PROTOCOL.md
+  PRODUCTION_REPORTING.md
+  PRODUCTION_V1.md
+  EVIDENCE_EXTRACTION.md
 ```
 
 ---
@@ -357,7 +366,7 @@ python -m unittest discover -s tests -v
 Expected:
 
 ```text
-Ran 16 tests
+Ran 25 tests
 OK
 ```
 
@@ -441,6 +450,18 @@ vendorverdict --health
 
 This validates the parser, multi-agent workflow, fallback evidence, scoring, recommendation, and email rendering without depending on live vendor websites.
 
+
+## Production evidence extraction
+
+VendorVerdict now extracts concrete evidence-backed signals from reachable official vendor pages.
+
+Extracted signals include SOC 2, ISO 27001, GDPR, DPA, subprocessors, SSO, MFA, RBAC, audit logs, encryption, data export, data retention/deletion, AI-training policy, and status/uptime signals.
+
+Each finding stores a signal label, source URL, confidence, checked timestamp, and a short evidence snippet. Saved reports and Markdown exports include an **Extracted evidence findings** section.
+
+These findings apply small conservative nudges to the scoring rubric, but they do not represent legal advice, compliance certification, or a formal security audit. They are public-evidence signals that help make vendor-risk reports more trustworthy and repeatable.
+
+See `docs/EVIDENCE_EXTRACTION.md` for details.
 
 ## Production reporting MVP
 

@@ -69,6 +69,7 @@ class ReportRecord(ReportSummary):
     critic_warnings: tuple[str, ...]
     metadata_json: dict[str, Any] = field(default_factory=dict)
     evidence_items: list[dict[str, Any]] = field(default_factory=list)
+    evidence_findings: list[dict[str, Any]] = field(default_factory=list)
 
     def __getitem__(self, key: str) -> Any:
         if key == "raw_query":
@@ -87,6 +88,8 @@ class ReportRecord(ReportSummary):
             return self.metadata_json
         if key == "evidence_items":
             return self.evidence_items
+        if key == "evidence_findings":
+            return self.evidence_findings
         return super().__getitem__(key)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -149,6 +152,7 @@ class ReportStore:
             )
             self._insert_scores(conn, report_id, verdict.scores)
             self._insert_sources(conn, report_id, verdict.scores)
+            self._insert_findings(conn, report_id, verdict.scores)
             conn.commit()
         return report_id
 
@@ -193,6 +197,7 @@ class ReportStore:
         if row is None:
             return None
         evidence_items = self.list_sources(report_id)
+        evidence_findings = self.list_findings(report_id)
         return ReportRecord(
             report_id=row["id"],
             created_at=row["created_at"],
@@ -209,6 +214,7 @@ class ReportStore:
             critic_warnings=tuple(json.loads(row["critic_warnings_json"])),
             metadata_json=json.loads(row["metadata_json"]),
             evidence_items=evidence_items,
+            evidence_findings=evidence_findings,
         )
 
     def list_sources(self, report_id: str) -> list[dict[str, Any]]:
@@ -219,6 +225,19 @@ class ReportStore:
                 FROM report_sources
                 WHERE report_id = ?
                 ORDER BY vendor, label
+                """,
+                (report_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_findings(self, report_id: str) -> list[dict[str, Any]]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT vendor, signal, label, source_label, source_url, snippet, confidence, checked_at
+                FROM report_findings
+                WHERE report_id = ?
+                ORDER BY vendor, source_label, label
                 """,
                 (report_id,),
             ).fetchall()
@@ -287,8 +306,23 @@ class ReportStore:
                     FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE
                 );
 
+                CREATE TABLE IF NOT EXISTS report_findings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id TEXT NOT NULL,
+                    vendor TEXT NOT NULL,
+                    signal TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    source_label TEXT NOT NULL,
+                    source_url TEXT NOT NULL,
+                    snippet TEXT NOT NULL,
+                    confidence TEXT NOT NULL,
+                    checked_at TEXT,
+                    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_report_sources_report ON report_sources(report_id);
+                CREATE INDEX IF NOT EXISTS idx_report_findings_report ON report_findings(report_id);
                 """
             )
             conn.commit()
@@ -363,6 +397,29 @@ class ReportStore:
                             score.confidence,
                         ),
                     )
+
+    def _insert_findings(self, conn: sqlite3.Connection, report_id: str, scores: tuple[VendorScore, ...]) -> None:
+        for score in scores:
+            for finding in score.extracted_findings:
+                conn.execute(
+                    """
+                    INSERT INTO report_findings (
+                        report_id, vendor, signal, label, source_label, source_url,
+                        snippet, confidence, checked_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        report_id,
+                        finding.vendor or score.vendor,
+                        finding.signal,
+                        finding.label,
+                        finding.source_label,
+                        finding.source_url,
+                        finding.snippet,
+                        finding.confidence,
+                        finding.checked_at,
+                    ),
+                )
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -462,5 +519,19 @@ def render_report_markdown(record: ReportRecord, sources: list[dict[str, Any]] |
             )
     else:
         lines.append("No structured evidence rows were stored for this report.")
+    lines.extend(["", "## Extracted evidence findings", ""])
+    findings = record.evidence_findings
+    if findings:
+        lines.append("| Vendor | Finding | Source | Confidence | Snippet |")
+        lines.append("|---|---|---|---|---|")
+        for finding in findings:
+            snippet = str(finding.get("snippet", "")).replace("|", "\\|")
+            source = f"{finding.get('source_label', '')}: {finding.get('source_url', '')}"
+            lines.append(
+                f"| {finding.get('vendor', '')} | {finding.get('label', '')} | {source} | "
+                f"{finding.get('confidence', '')} | {snippet} |"
+            )
+    else:
+        lines.append("No extracted evidence findings were stored for this report.")
     lines.extend(["", "---", "", "Generated by VendorVerdict."])
     return "\n".join(lines)

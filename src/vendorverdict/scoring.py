@@ -13,6 +13,11 @@ WEIGHTS = {
 
 DEFAULT_SCORE = 60
 
+SECURITY_SIGNALS = {"soc_2", "iso_27001", "sso", "mfa", "rbac", "audit_logs", "encryption"}
+PRIVACY_SIGNALS = {"gdpr", "dpa", "subprocessors", "data_retention", "ai_training_policy"}
+PORTABILITY_SIGNALS = {"data_export"}
+OPERATIONAL_SIGNALS = {"status_page"}
+
 
 def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScore:
     """Score a vendor using the MVP's transparent weighted rubric."""
@@ -35,6 +40,17 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
         pricing += 1
     if _source_ok(evidence, "docs"):
         maturity += 1
+
+    # Production V1 evidence extraction adds small signal-based nudges. These
+    # are deliberately conservative: a public page mention is useful evidence,
+    # but it is not a formal audit or compliance guarantee.
+    extracted_signals = {finding.signal for finding in evidence.extracted_findings}
+    security += min(4, len(extracted_signals & SECURITY_SIGNALS))
+    privacy += min(4, len(extracted_signals & PRIVACY_SIGNALS))
+    if extracted_signals & PORTABILITY_SIGNALS:
+        lock_in += 2
+    if extracted_signals & OPERATIONAL_SIGNALS:
+        maturity += 2
 
     # Nudge the scoring for sensitive data: security/privacy matter more in the
     # explanation, but keep weights simple for the MVP. This preserves the fixed
@@ -82,6 +98,7 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
         risks=evidence.known_risks,
         source_checks=evidence.source_checks,
         live_findings=evidence.live_findings,
+        extracted_findings=evidence.extracted_findings,
     )
 
 

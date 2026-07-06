@@ -114,6 +114,16 @@ def render_verdict(verdict: VendorVerdict) -> str:
             lines.append("- Live evidence:")
             for finding in score.live_findings:
                 lines.append(f"  - {finding}")
+        if score.extracted_findings:
+            lines.append("- Evidence-backed findings:")
+            for finding in score.extracted_findings[:6]:
+                snippet = _shorten(finding.snippet, 180)
+                lines.append(
+                    f"  - {finding.label} [{finding.source_label}, {finding.confidence} confidence]: {snippet}"
+                )
+            remaining = len(score.extracted_findings) - 6
+            if remaining > 0:
+                lines.append(f"  - +{remaining} more extracted finding(s) in the stored report.")
     lines.append("")
     lines.append("Due-diligence email:")
     lines.append("```text")
@@ -149,6 +159,13 @@ def render_verdict(verdict: VendorVerdict) -> str:
     else:
         lines.append(f"Send the due-diligence email to {winner.vendor}, then rerun VendorVerdict with the vendor's answers.")
     return "\n".join(lines)
+
+
+def _shorten(text: str, limit: int) -> str:
+    normalized = " ".join((text or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: max(0, limit - 3)].rstrip() + "..."
 
 
 def _single_vendor_decision(score) -> tuple[str, str]:
