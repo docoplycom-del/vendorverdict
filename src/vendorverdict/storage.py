@@ -371,7 +371,7 @@ class ReportStore:
                             check.status_code,
                             check.final_url,
                             check.note,
-                            "live_check",
+                            "discovered_live_check" if getattr(check, "discovered", False) else "live_check",
                             score.confidence,
                         ),
                     )
