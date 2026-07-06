@@ -533,3 +533,51 @@ vendorverdict --show-report REPORT_ID --export-pdf --db-path ./data/vendorverdic
 ```
 
 See `docs/PDF_EXPORT.md` for details.
+
+## Production HTTP API
+
+VendorVerdict includes a FastAPI backend for production report management. The ASI:One uAgent remains the conversational interface, while the API enables a future web dashboard, customer portal, internal admin tool, or another agent to create, list, retrieve, and export stored reports.
+
+Run locally:
+
+```bash
+vendorverdict-api
+```
+
+Default API URL:
+
+```text
+http://127.0.0.1:8080
+```
+
+Interactive docs:
+
+```text
+http://127.0.0.1:8080/docs
+```
+
+Core endpoints:
+
+```text
+GET  /health
+POST /reports/run
+GET  /reports
+GET  /reports/{report_id}
+GET  /reports/{report_id}/markdown
+GET  /reports/{report_id}/pdf
+```
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8080/reports/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Compare Notion and Airtable for storing client project data for a 10-person consulting startup in the UK.",
+    "live_evidence": false,
+    "export_markdown": true,
+    "export_pdf": true
+  }'
+```
+
+The API returns a saved report ID plus links for JSON, Markdown, and PDF export. See `docs/API.md` for full endpoint details.

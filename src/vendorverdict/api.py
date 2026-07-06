@@ -1,0 +1,325 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any, Literal
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, PlainTextResponse
+from pydantic import BaseModel, Field
+
+from vendorverdict import __version__
+from vendorverdict.cli import DEMO_QUERY
+from vendorverdict.pdf_export import export_report_pdf
+from vendorverdict.reporting import export_report_markdown, render_report_markdown
+from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
+from vendorverdict.tools.evidence import EvidenceCollector
+from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
+
+
+class RunReportRequest(BaseModel):
+    """Request body for creating a production VendorVerdict report."""
+
+    query: str = Field(..., min_length=5, description="Natural-language vendor comparison or audit request.")
+    use_live_evidence: bool | None = Field(
+        default=None,
+        description="Override live evidence checks. If omitted, VENDORVERDICT_API_LIVE_EVIDENCE is used.",
+    )
+    # Backward-compatible alias used in early API tests/examples.
+    live_evidence: bool | None = Field(default=None, description="Alias for use_live_evidence.")
+    export_markdown: bool = Field(default=False, description="Also export Markdown after saving the report.")
+    export_pdf: bool = Field(default=False, description="Also export PDF after saving the report.")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Optional caller metadata stored with the report.")
+
+
+class RunReportResponse(BaseModel):
+    status: Literal["completed", "needs_clarification"]
+    report_id: str | None = None
+    report_url: str | None = None
+    markdown_url: str | None = None
+    pdf_url: str | None = None
+    links: dict[str, str] = Field(default_factory=dict)
+    recommendation: str | None = None
+    confidence: str | None = None
+    vendors: list[str] = Field(default_factory=list)
+    use_case: str = ""
+    report_text: str
+    rendered_response: str
+    scorecard: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_source_count: int = 0
+    evidence_finding_count: int = 0
+    exports: dict[str, str] = Field(default_factory=dict)
+    missing_fields: list[str] = Field(default_factory=list)
+
+
+def create_app(
+    *,
+    db_path: str | Path | None = None,
+    export_dir: str | Path | None = None,
+) -> FastAPI:
+    """Create the VendorVerdict FastAPI app.
+
+    The API is the production-facing report-management layer. It reuses the same
+    report engine as the CLI and ASI:One agent, but exposes it over HTTP so a web
+    dashboard, another service, or another agent can create, list, view, and
+    export stored reports.
+    """
+
+    default_live_evidence = _env_bool("VENDORVERDICT_API_LIVE_EVIDENCE", default=True)
+
+    app = FastAPI(
+        title="VendorVerdict API",
+        version=__version__,
+        description=(
+            "Production report-management API for VendorVerdict. It can run "
+            "vendor-risk reviews, persist reports, and export Markdown/PDF artifacts."
+        ),
+    )
+    app.state.default_db_path = Path(db_path) if db_path is not None else None
+    app.state.default_export_dir = Path(export_dir) if export_dir is not None else None
+
+    cors_origins = [origin.strip() for origin in os.getenv("VENDORVERDICT_API_CORS_ORIGINS", "").split(",") if origin.strip()]
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+    def store() -> ReportStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return ReportStore(env_db or app.state.default_db_path)
+
+    def resolved_export_dir() -> Path:
+        return Path(
+            os.getenv("VENDORVERDICT_API_EXPORT_DIR")
+            or os.getenv("VENDORVERDICT_REPORT_EXPORT_DIR")
+            or app.state.default_export_dir
+            or "reports"
+        )
+
+    @app.get("/")
+    def root() -> dict[str, Any]:
+        return {
+            "service": "vendorverdict-api",
+            "version": __version__,
+            "docs": "/docs",
+            "health": "/health",
+        }
+
+    @app.get("/health")
+    def health() -> dict[str, Any]:
+        report_store = store()
+        report_store.list_reports(limit=1)  # Ensures SQLite schema exists and is reachable.
+        output = render_response(DEMO_QUERY, use_live_evidence=False)
+        required_markers = [
+            "VendorVerdict: SaaS Procurement Review",
+            "Multi-agent collaboration completed",
+            "Procurement Intent Agent",
+            "Evidence Agent",
+            "Risk Scoring Agent",
+            "Recommendation Agent",
+            "Email Agent",
+            "Critic Agent",
+            "Due-diligence email",
+        ]
+        missing = [marker for marker in required_markers if marker not in output]
+        return {
+            "status": "ok" if not missing else "fail",
+            "service": "vendorverdict-api",
+            "version": __version__,
+            "db_path": str(report_store.db_path),
+            "export_dir": str(resolved_export_dir()),
+            "default_live_evidence": default_live_evidence,
+            "missing_markers": missing,
+            "checks": [
+                "parser",
+                "specialist-agent workflow",
+                "scoring",
+                "recommendation",
+                "email rendering",
+                "report storage",
+            ],
+        }
+
+    @app.post("/reports/run", response_model=RunReportResponse)
+    def run_report(payload: RunReportRequest) -> RunReportResponse:
+        if payload.use_live_evidence is not None:
+            use_live_evidence = payload.use_live_evidence
+        elif payload.live_evidence is not None:
+            use_live_evidence = payload.live_evidence
+        else:
+            use_live_evidence = default_live_evidence
+
+        collector = EvidenceCollector(use_live_checks=use_live_evidence)
+        verdict = build_vendor_verdict(payload.query, collector=collector)
+        report_text = render_verdict(verdict)
+
+        if verdict.request.missing_fields or verdict.recommendation is None:
+            return RunReportResponse(
+                status="needs_clarification",
+                report_id=None,
+                recommendation=None,
+                confidence=verdict.confidence,
+                vendors=list(verdict.request.vendors),
+                use_case=verdict.request.use_case,
+                report_text=report_text,
+                rendered_response=report_text,
+                scorecard=[],
+                missing_fields=list(verdict.request.missing_fields),
+            )
+
+        report_store = store()
+        metadata = {
+            "client": "vendorverdict-api",
+            "live_evidence": use_live_evidence,
+            **payload.metadata,
+        }
+        report_id = report_store.save_report(verdict, report_text, raw_query=payload.query, metadata=metadata)
+        exports: dict[str, str] = {}
+        if payload.export_markdown:
+            path = export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
+            exports["markdown_path"] = str(path)
+        if payload.export_pdf:
+            path = export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+            exports["pdf_path"] = str(path)
+
+        record = _get_report_or_404(report_store, report_id)
+        return _run_response(record, exports=exports)
+
+    @app.get("/reports")
+    def list_reports(limit: int = 20) -> list[dict[str, Any]]:
+        safe_limit = max(1, min(limit, 100))
+        return [_summary_to_dict(summary) for summary in store().list_reports(limit=safe_limit)]
+
+    @app.get("/reports/{report_id}")
+    def get_report(report_id: str) -> dict[str, Any]:
+        return _record_to_dict(_get_report_or_404(store(), report_id))
+
+    @app.get("/reports/{report_id}/markdown", response_class=PlainTextResponse)
+    def get_report_markdown(report_id: str) -> PlainTextResponse:
+        report_store = store()
+        report = _get_report_or_404(report_store, report_id)
+        markdown = render_report_markdown(report)
+        return PlainTextResponse(markdown, media_type="text/markdown; charset=utf-8")
+
+    @app.get("/reports/{report_id}/pdf")
+    def get_report_pdf(report_id: str) -> FileResponse:
+        report_store = store()
+        _get_report_or_404(report_store, report_id)
+        path = export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+        return FileResponse(
+            path=str(path),
+            media_type="application/pdf",
+            filename=path.name,
+        )
+
+    return app
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_report_or_404(store: ReportStore, report_id: str) -> ReportRecord:
+    report = store.get_report(report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Report not found: {report_id}")
+    return report
+
+
+def _summary_to_dict(summary: ReportSummary) -> dict[str, Any]:
+    return {
+        "id": summary.report_id,
+        "report_id": summary.report_id,
+        "created_at": summary.created_at,
+        "mode": summary.mode,
+        "report_type": summary.mode,
+        "vendors": list(summary.vendors),
+        "use_case": summary.use_case,
+        "recommendation": summary.recommended_vendor,
+        "confidence": summary.overall_confidence,
+        "report_url": f"/reports/{summary.report_id}",
+        "markdown_url": f"/reports/{summary.report_id}/markdown",
+        "pdf_url": f"/reports/{summary.report_id}/pdf",
+    }
+
+
+def _run_response(record: ReportRecord, exports: dict[str, str] | None = None) -> RunReportResponse:
+    links = {
+        "self": f"/reports/{record.report_id}",
+        "markdown": f"/reports/{record.report_id}/markdown",
+        "pdf": f"/reports/{record.report_id}/pdf",
+    }
+    return RunReportResponse(
+        status="completed",
+        report_id=record.report_id,
+        report_url=links["self"],
+        markdown_url=links["markdown"],
+        pdf_url=links["pdf"],
+        links=links,
+        recommendation=record.recommended_vendor,
+        confidence=record.overall_confidence,
+        vendors=list(record.vendors),
+        use_case=record.use_case,
+        report_text=record.report_text,
+        rendered_response=record.report_text,
+        scorecard=record.scores_json,
+        evidence_source_count=len(record.evidence_items),
+        evidence_finding_count=len(record.evidence_findings),
+        exports=exports or {},
+    )
+
+
+def _record_to_dict(report: ReportRecord) -> dict[str, Any]:
+    return {
+        "id": report.report_id,
+        "report_id": report.report_id,
+        "created_at": report.created_at,
+        "raw_query": report.raw_query,
+        "mode": report.mode,
+        "report_type": report.mode,
+        "vendors": list(report.vendors),
+        "use_case": report.use_case,
+        "recommendation": report.recommended_vendor,
+        "confidence": report.overall_confidence,
+        "report_text": report.report_text,
+        "rendered_response": report.report_text,
+        "request": report.request_json,
+        "scores": report.scores_json,
+        "scorecard": report.scores_json,
+        "collaboration_steps": list(report.collaboration_steps),
+        "critic_warnings": list(report.critic_warnings),
+        "metadata": report.metadata_json,
+        "evidence_items": report.evidence_items,
+        "evidence_sources": report.evidence_items,
+        "evidence_findings": report.evidence_findings,
+        "markdown_url": f"/reports/{report.report_id}/markdown",
+        "pdf_url": f"/reports/{report.report_id}/pdf",
+    }
+
+
+app = create_app()
+
+
+def main() -> None:
+    import argparse
+
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Run the VendorVerdict FastAPI report-management backend.")
+    parser.add_argument("--host", default=os.getenv("VENDORVERDICT_API_HOST", "0.0.0.0"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("VENDORVERDICT_API_PORT", "8080")))
+    args = parser.parse_args()
+
+    uvicorn.run("vendorverdict.api:app", host=args.host, port=args.port, reload=False)
+
+
+if __name__ == "__main__":
+    main()
