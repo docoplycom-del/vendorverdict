@@ -27,6 +27,29 @@ class SourceCheck:
 
 
 @dataclass(frozen=True)
+class EvidenceItem:
+    """Production-oriented evidence record used for stored reports.
+
+    EvidenceItem is intentionally small and serializable.  It gives each report
+    a repeatable evidence appendix with a claim, source URL, retrieval status,
+    confidence, and timestamp.  Later production versions can enrich this with
+    page excerpts and LLM-extracted compliance signals.
+    """
+
+    vendor: str
+    label: str
+    claim: str
+    source_url: str
+    source_type: Literal["live", "fallback"]
+    confidence: Confidence
+    ok: bool | None = None
+    status_code: int | None = None
+    final_url: str | None = None
+    note: str = ""
+    checked_at: str | None = None
+
+
+@dataclass(frozen=True)
 class VendorEvidence:
     """Public evidence and fallback facts for a vendor.
 

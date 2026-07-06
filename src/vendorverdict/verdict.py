@@ -22,8 +22,18 @@ def build_vendor_verdict(raw_query: str, collector: EvidenceCollector | None = N
 def render_response(raw_query: str, use_live_evidence: bool | None = None) -> str:
     collector = EvidenceCollector(use_live_checks=use_live_evidence)
     verdict = build_vendor_verdict(raw_query, collector=collector)
-    request = verdict.request
+    return render_verdict(verdict)
 
+
+def render_verdict(verdict: VendorVerdict) -> str:
+    """Render an already-built verdict.
+
+    Production paths use this to save exactly the same verdict that was shown to
+    the user, avoiding duplicate live source checks or drift between persisted
+    and displayed reports.
+    """
+
+    request = verdict.request
     if request.missing_fields:
         prompts = []
         if "vendors" in request.missing_fields:

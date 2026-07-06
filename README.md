@@ -440,3 +440,44 @@ vendorverdict --health
 ```
 
 This validates the parser, multi-agent workflow, fallback evidence, scoring, recommendation, and email rendering without depending on live vendor websites.
+
+
+## Production reporting MVP
+
+VendorVerdict now includes a first production persistence layer for saved vendor-risk reports.
+
+The CLI can save, list, show, and export reports:
+
+```bash
+vendorverdict --demo --no-live-evidence --save-report
+vendorverdict --list-reports
+vendorverdict --show-report REPORT_ID
+vendorverdict --export-markdown REPORT_ID ./exports/report.md
+```
+
+Reports are stored in SQLite by default at `~/.vendorverdict/vendorverdict.sqlite3`, or in a custom location with `--db` / `VENDORVERDICT_DB_PATH`.
+
+This makes the product more than a one-off chat answer: production users can retain vendor-risk reports, export them, and rerun them later as vendor evidence changes.
+
+## Production V1: report persistence
+
+VendorVerdict now includes a first production persistence layer. Generated reports can be saved to a local SQLite report store and exported to Markdown.
+
+This lets the product move beyond one-off chat responses toward repeatable procurement records with report IDs, vendor scorecards, evidence appendix items, confidence, timestamps, and exportable artifacts.
+
+Examples:
+
+```bash
+vendorverdict --demo --save-report --export-markdown
+vendorverdict --demo --no-live-evidence --save-report --export-markdown
+vendorverdict --list-reports
+vendorverdict --show-report <REPORT_ID>
+```
+
+Configuration:
+
+```env
+VENDORVERDICT_DB_PATH=/data/vendorverdict.sqlite3
+```
+
+See `docs/PRODUCTION_V1.md` for details.

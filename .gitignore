@@ -1,12 +1,15 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
+dist/
+build/
 
 # Virtualenvs
 .venv/
@@ -22,9 +25,10 @@ venv/
 .vscode/
 .idea/
 
+# Production local artifacts
+*.sqlite3
+*.db
+reports/
+data/
 
-
-
-*.pyc
-dist/
-build/
+agent*_data.json
