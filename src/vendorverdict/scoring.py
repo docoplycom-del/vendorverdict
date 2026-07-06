@@ -99,6 +99,8 @@ def score_vendor(evidence: VendorEvidence, request: VendorRequest) -> VendorScor
         source_checks=evidence.source_checks,
         live_findings=evidence.live_findings,
         extracted_findings=evidence.extracted_findings,
+        discovered_sources=evidence.discovered_sources,
+        source_discovery_notes=evidence.source_discovery_notes,
     )
 
 

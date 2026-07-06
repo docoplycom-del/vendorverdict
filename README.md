@@ -502,3 +502,9 @@ VENDORVERDICT_DB_PATH=/data/vendorverdict.sqlite3
 ```
 
 See `docs/PRODUCTION_V1.md` for details.
+
+## Production source discovery
+
+VendorVerdict now includes a conservative source-discovery layer for vendors that are not yet in the curated fallback registry. When live evidence is enabled, the Evidence Agent can generate likely official domains, probe common trust/security/pricing/privacy/docs paths, and use reachable pages for evidence extraction.
+
+This helps production coverage expand beyond the initial curated SaaS list while keeping fallback behavior safe. Source discovery can be disabled with `VENDORVERDICT_SOURCE_DISCOVERY=0`.

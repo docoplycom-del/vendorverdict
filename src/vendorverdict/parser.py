@@ -38,14 +38,15 @@ REGION_PATTERNS = {
 def parse_vendor_request(raw_query: str, known_vendor_names: list[str]) -> VendorRequest:
     """Extract vendors and use-case hints from a natural-language query.
 
-    This is deliberately deterministic for the skeleton. Later we can replace or
-    augment it with an LLM parser, but a deterministic parser gives us reliable
-    demo behavior and easier tests.
+    Known vendors are detected in user order. Production fallback extraction also
+    supports unknown vendors in explicit "compare/check/review" prompts so the
+    Source Discovery Agent can attempt a low-confidence review beyond the
+    curated fallback registry.
     """
     query = " ".join(raw_query.strip().split())
     query_lower = query.lower()
 
-    vendors = _extract_known_vendors(query, known_vendor_names)
+    vendors = _extract_vendors(query, known_vendor_names)
     use_case = _extract_use_case(query)
     team_size = _extract_team_size(query)
     business_type = _extract_business_type(query)
@@ -53,9 +54,6 @@ def parse_vendor_request(raw_query: str, known_vendor_names: list[str]) -> Vendo
     data_sensitivity = _infer_data_sensitivity(query_lower)
 
     missing: list[str] = []
-    # A single named vendor is a valid request: VendorVerdict should run a
-    # one-vendor risk audit instead of forcing every interaction to be a
-    # comparison. Zero vendors still requires a clarifying question.
     if len(vendors) == 0:
         missing.append("vendors")
     if not use_case:
@@ -74,13 +72,22 @@ def parse_vendor_request(raw_query: str, known_vendor_names: list[str]) -> Vendo
     )
 
 
-def _extract_known_vendors(query: str, known_vendor_names: list[str]) -> list[str]:
-    """Find known vendors while preserving the order used by the user.
+def _extract_vendors(query: str, known_vendor_names: list[str]) -> list[str]:
+    explicit = _extract_explicit_vendors(query, known_vendor_names)
+    known = _extract_known_vendors(query, known_vendor_names)
 
-    We collect match positions first rather than iterating alphabetically, so
-    "Compare Notion, Airtable, and Coda" returns that exact order. Overlap
-    protection keeps longer names such as "Google Workspace" intact.
-    """
+    combined: list[str] = []
+    for name in explicit or known:
+        if name not in combined:
+            combined.append(name)
+    for name in known:
+        if name not in combined:
+            combined.append(name)
+    return combined[:5]
+
+
+def _extract_known_vendors(query: str, known_vendor_names: list[str]) -> list[str]:
+    """Find known vendors while preserving the order used by the user."""
     matches: list[tuple[int, int, str]] = []
     for name in known_vendor_names:
         pattern = rf"(?<![A-Za-z0-9]){re.escape(name)}(?![A-Za-z0-9])"
@@ -98,6 +105,72 @@ def _extract_known_vendors(query: str, known_vendor_names: list[str]) -> list[st
         found.append(canonical)
         occupied_spans.append((start, end))
     return found
+
+
+def _extract_explicit_vendors(query: str, known_vendor_names: list[str]) -> list[str]:
+    segment = ""
+    patterns = [
+        r"\bcompare\s+(.+?)(?:\s+for\b|\s+to\b|\.\s|\.$|$)",
+        r"\b(?:check|audit|review|evaluate|assess)\s+(.+?)(?:\s+for\b|\s+to\b|\.\s|\.$|$)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, query, flags=re.IGNORECASE)
+        if match:
+            segment = match.group(1)
+            break
+    if not segment:
+        return []
+
+    segment = re.sub(r"\bversus\b|\bvs\.?\b", ",", segment, flags=re.IGNORECASE)
+    segment = re.sub(r"\b(vendors?|tools?|platforms?|software|apps?)\b", " ", segment, flags=re.IGNORECASE)
+    parts = re.split(r"\s*,\s*|\s+and\s+|\s+or\s+|\s*/\s*", segment)
+
+    vendors: list[str] = []
+    for part in parts:
+        cleaned = _clean_vendor_candidate(part)
+        if not cleaned:
+            continue
+        canonical = _canonical_case(cleaned, known_vendor_names)
+        if canonical.lower() == cleaned.lower():
+            canonical = _preserve_vendor_case(cleaned)
+        if canonical not in vendors:
+            vendors.append(canonical)
+    return vendors
+
+
+def _clean_vendor_candidate(value: str) -> str:
+    cleaned = value.strip(" .:;!?\"'()[]{}")
+    cleaned = re.sub(r"^the\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^and\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^or\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned or len(cleaned) > 60:
+        return ""
+    blocked = {
+        "storing",
+        "managing",
+        "client project data",
+        "customer data",
+        "internal docs",
+        "project management",
+        "crm",
+        "vendor",
+        "vendors",
+        "and",
+        "or",
+    }
+    if cleaned.lower() in blocked:
+        return ""
+    if len(cleaned.split()) > 4 and "." not in cleaned:
+        return ""
+    return cleaned
+
+
+def _preserve_vendor_case(value: str) -> str:
+    value = value.strip()
+    if "." in value or any(ch.isupper() for ch in value):
+        return value
+    return " ".join(word[:1].upper() + word[1:] for word in value.split())
 
 
 def _canonical_case(name: str, known_vendor_names: list[str]) -> str:
@@ -122,7 +195,6 @@ def _extract_use_case(query: str) -> str:
 
 
 def _clean_use_case(value: str) -> str:
-    # Keep the actual job-to-be-done, not team/location context.
     stop_patterns = [
         r"\s+for\s+(?:a|an|the)?\s*\d+\s*[- ]?(?:person|people)\b.*$",
         r"\s+for\s+(?:a|an|the)?\s*(?:consulting startup|startup|small business|student society|agency|nonprofit|charity|freelance team)\b.*$",

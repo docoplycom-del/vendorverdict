@@ -9,14 +9,16 @@ import requests
 from vendorverdict.data_loader import load_fallback_vendors
 from vendorverdict.models import SourceCheck, VendorEvidence
 from vendorverdict.tools.evidence_extractor import extract_evidence_findings, summarize_findings
+from vendorverdict.tools.source_discovery import discover_vendor_sources
 
 
 class EvidenceCollector:
-    """Collect fallback and live official-source evidence for vendors.
+    """Collect fallback, discovered, and live official-source evidence.
 
     The fallback database is still the source of demo reliability. Live source
-    checks are additive: if the internet, a vendor page, or a firewall fails,
-    VendorVerdict still produces a useful procurement review.
+    checks are additive. Source discovery fills missing official-source targets
+    for unknown or incomplete vendors before the normal reachability and
+    extraction pipeline runs.
     """
 
     SOURCE_LABELS = (
@@ -26,7 +28,12 @@ class EvidenceCollector:
         ("docs", "docs_url"),
     )
 
-    def __init__(self, use_live_checks: bool | None = None, timeout_seconds: float = 3.0) -> None:
+    def __init__(
+        self,
+        use_live_checks: bool | None = None,
+        timeout_seconds: float = 3.0,
+        use_source_discovery: bool | None = None,
+    ) -> None:
         self._vendors = load_fallback_vendors()
         self.timeout_seconds = timeout_seconds
         self._cache: dict[str, VendorEvidence] = {}
@@ -36,6 +43,12 @@ class EvidenceCollector:
             self.use_live_checks = env_value not in {"0", "false", "no", "off"}
         else:
             self.use_live_checks = use_live_checks
+
+        if use_source_discovery is None:
+            discovery_value = os.getenv("VENDORVERDICT_SOURCE_DISCOVERY", "1").strip().lower()
+            self.use_source_discovery = discovery_value not in {"0", "false", "no", "off"}
+        else:
+            self.use_source_discovery = use_source_discovery
 
     @property
     def known_vendor_names(self) -> list[str]:
@@ -47,6 +60,8 @@ class EvidenceCollector:
             return self._cache[normalized]
 
         vendor = self._vendors.get(normalized) or self._unknown_vendor(vendor_name)
+        if self.use_live_checks and self.use_source_discovery:
+            vendor = self.with_discovered_sources(vendor)
         if self.use_live_checks:
             vendor = self.with_live_evidence(vendor)
 
@@ -56,22 +71,61 @@ class EvidenceCollector:
     def get_many(self, vendor_names: list[str] | tuple[str, ...]) -> list[VendorEvidence]:
         return [self.get(name) for name in vendor_names]
 
+    def with_discovered_sources(self, evidence: VendorEvidence) -> VendorEvidence:
+        """Fill missing official-source URLs through deterministic discovery."""
+        if all((evidence.security_url, evidence.pricing_url, evidence.privacy_url, evidence.docs_url)):
+            return evidence
+
+        configured_urls = {
+            "security": evidence.security_url,
+            "pricing": evidence.pricing_url,
+            "privacy": evidence.privacy_url,
+            "docs": evidence.docs_url,
+        }
+        discovered_sources = discover_vendor_sources(
+            evidence.name,
+            configured_urls=configured_urls,
+            timeout_seconds=min(self.timeout_seconds, 1.5),
+        )
+        if not discovered_sources:
+            return replace(
+                evidence,
+                source_discovery_notes=(
+                    "Source discovery: Source Discovery Agent did not find additional reachable official-source targets.",
+                ),
+            )
+
+        discovered_by_label = {source.label: source for source in discovered_sources}
+        labels = ", ".join(f"{source.label}={source.url}" for source in discovered_sources)
+        return replace(
+            evidence,
+            security_url=evidence.security_url or (discovered_by_label.get("security").url if discovered_by_label.get("security") else ""),
+            pricing_url=evidence.pricing_url or (discovered_by_label.get("pricing").url if discovered_by_label.get("pricing") else ""),
+            privacy_url=evidence.privacy_url or (discovered_by_label.get("privacy").url if discovered_by_label.get("privacy") else ""),
+            docs_url=evidence.docs_url or (discovered_by_label.get("docs").url if discovered_by_label.get("docs") else ""),
+            discovered_sources=tuple(discovered_sources),
+            source_discovery_notes=(f"Source discovery: Source Discovery Agent found likely official-source targets: {labels}",),
+        )
+
     def with_live_evidence(self, evidence: VendorEvidence) -> VendorEvidence:
         """Check official-source target URLs and merge the result into evidence."""
+        discovered_labels = {source.label for source in evidence.discovered_sources}
         targets = [
-            (label, getattr(evidence, attr))
+            (label, getattr(evidence, attr), label in discovered_labels)
             for label, attr in self.SOURCE_LABELS
             if getattr(evidence, attr, "")
         ]
         if not targets:
             return replace(
                 evidence,
-                live_findings=("No official-source target URLs are configured yet.",),
+                live_findings=tuple(evidence.source_discovery_notes) + (
+                    "No official-source target URLs are configured yet.",
+                ),
             )
 
         checks: list[SourceCheck] = []
         with ThreadPoolExecutor(max_workers=min(4, len(targets))) as executor:
-            futures = [executor.submit(self._check_url, evidence.name, label, url) for label, url in targets]
+            futures = [executor.submit(self._check_url, evidence.name, label, url, discovered) for label, url, discovered in targets]
             for future in as_completed(futures):
                 checks.append(future.result())
 
@@ -79,7 +133,8 @@ class EvidenceCollector:
         reachable = sum(1 for check in checks if check.ok)
         total = len(checks)
         extracted_findings = tuple(finding for check in checks for finding in check.findings)
-        findings = [f"Live official-source check: {reachable}/{total} configured sources reachable."]
+        findings = list(evidence.source_discovery_notes)
+        findings.append(f"Live official-source check: {reachable}/{total} configured sources reachable.")
         if extracted_findings:
             findings.append(summarize_findings(extracted_findings))
         else:
@@ -95,7 +150,7 @@ class EvidenceCollector:
         """Backward-compatible alias kept for older skeleton code."""
         return self.with_live_evidence(evidence)
 
-    def _check_url(self, vendor_name: str, label: str, url: str) -> SourceCheck:
+    def _check_url(self, vendor_name: str, label: str, url: str, discovered: bool = False) -> SourceCheck:
         headers = {
             "User-Agent": "VendorVerdict/0.1 (+https://github.com/docoplycom-del/vendorverdict)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -136,6 +191,7 @@ class EvidenceCollector:
                 note=note,
                 final_url=final_url if redirected else None,
                 findings=extracted,
+                discovered=discovered,
             )
         except requests.RequestException as exc:
             return SourceCheck(
@@ -144,6 +200,7 @@ class EvidenceCollector:
                 ok=False,
                 status_code=None,
                 note=f"unreachable: {exc.__class__.__name__}",
+                discovered=discovered,
             )
 
     def _unknown_vendor(self, vendor_name: str) -> VendorEvidence:

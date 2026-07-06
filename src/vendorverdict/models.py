@@ -28,6 +28,26 @@ class EvidenceFinding:
 
 
 @dataclass(frozen=True)
+class DiscoveredSource:
+    """A candidate official vendor source discovered at runtime.
+
+    Source discovery is used for vendors that are not yet in the curated
+    fallback registry, or where a configured URL is missing. A discovered source
+    is still verified by the normal EvidenceCollector before it is used for
+    scoring or report citations.
+    """
+
+    vendor: str
+    label: str
+    url: str
+    ok: bool
+    status_code: int | None = None
+    final_url: str | None = None
+    confidence: Confidence = "Medium"
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class SourceCheck:
     """Result of checking an official vendor source URL.
 
@@ -37,24 +57,22 @@ class SourceCheck:
     """
 
     label: str
-    # The URL we intended to check from our official-source registry.
     url: str
     ok: bool
     status_code: int | None = None
     note: str = ""
-    # Final URL after redirects, if different. This avoids making a
-    # redirected vendor page look like the original configured source.
     final_url: str | None = None
     findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
+    discovered: bool = False
 
 
 @dataclass(frozen=True)
 class EvidenceItem:
     """Production-oriented evidence record used for stored reports.
 
-    EvidenceItem is intentionally small and serializable.  It gives each report
-    a repeatable evidence appendix with a claim, source URL, retrieval status,
-    confidence, and timestamp.  Later production versions can enrich this with
+    EvidenceItem is intentionally small and serializable. It gives each report a
+    repeatable evidence appendix with a claim, source URL, retrieval status,
+    confidence, and timestamp. Later production versions can enrich this with
     page excerpts and LLM-extracted compliance signals.
     """
 
@@ -76,7 +94,8 @@ class VendorEvidence:
     """Public evidence and fallback facts for a vendor.
 
     Fallback evidence keeps the demo reliable. Live source checks add visible
-    tool use when internet access is available.
+    tool use when internet access is available. Source discovery fills missing
+    official-source targets for unknown or incomplete vendors.
     """
 
     name: str
@@ -91,6 +110,8 @@ class VendorEvidence:
     source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
     live_findings: tuple[str, ...] = field(default_factory=tuple)
     extracted_findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
+    discovered_sources: tuple[DiscoveredSource, ...] = field(default_factory=tuple)
+    source_discovery_notes: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -122,6 +143,8 @@ class VendorScore:
     source_checks: tuple[SourceCheck, ...] = field(default_factory=tuple)
     live_findings: tuple[str, ...] = field(default_factory=tuple)
     extracted_findings: tuple[EvidenceFinding, ...] = field(default_factory=tuple)
+    discovered_sources: tuple[DiscoveredSource, ...] = field(default_factory=tuple)
+    source_discovery_notes: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
