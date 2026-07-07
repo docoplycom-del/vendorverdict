@@ -61,3 +61,9 @@ For local demos, set live evidence to `0` for reliable deterministic behaviour. 
 - Stripe/FET billing controls.
 - Admin source-management UI.
 - Vendor library and history.
+
+## Authentication
+
+The dashboard is protected when `VENDORVERDICT_AUTH_ENABLED=1` or `VENDORVERDICT_AUTH_PASSWORD` is configured.
+
+Unauthenticated browser users are redirected to `/login`. The same credentials also work for API clients through HTTP Basic authentication. See `docs/AUTHENTICATION.md`.

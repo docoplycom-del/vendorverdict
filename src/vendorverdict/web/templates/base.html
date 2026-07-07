@@ -20,6 +20,14 @@
       <a href="/reviews/new">New review</a>
       <a href="/docs">API docs</a>
       <a href="/health">Health</a>
+      {% if auth and auth.enabled %}
+        {% if auth.is_authenticated %}
+          <span class="nav-user">{{ auth.username }}</span>
+          <a href="/logout">Logout</a>
+        {% else %}
+          <a href="/login">Login</a>
+        {% endif %}
+      {% endif %}
     </nav>
   </header>
 

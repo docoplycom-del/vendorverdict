@@ -3,16 +3,24 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from vendorverdict import __version__
+from vendorverdict.auth import (
+    authenticated_username,
+    auth_is_configured,
+    clear_session_cookie,
+    credentials_are_valid,
+    get_auth_settings,
+    set_session_cookie,
+)
 from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
@@ -95,6 +103,78 @@ def create_app(
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    @app.middleware("http")
+    async def require_authentication(request: Request, call_next):
+        settings = get_auth_settings()
+        if not settings.enabled or _is_public_path(request.url.path):
+            return await call_next(request)
+
+        if not auth_is_configured(settings):
+            return JSONResponse(
+                {
+                    "detail": (
+                        "Authentication is enabled but VENDORVERDICT_AUTH_PASSWORD "
+                        "is not configured."
+                    )
+                },
+                status_code=503,
+            )
+
+        if authenticated_username(request, settings):
+            return await call_next(request)
+
+        if _wants_html(request) or _is_browser_route(request):
+            next_path = quote(str(request.url.path), safe="/")
+            return RedirectResponse(url=f"/login?next={next_path}", status_code=303)
+        return JSONResponse({"detail": "Authentication required"}, status_code=401)
+
+    @app.get("/login", response_class=HTMLResponse)
+    def login_form(request: Request, next: str = "/dashboard") -> Any:
+        settings = get_auth_settings()
+        if not settings.enabled:
+            return RedirectResponse(url=next or "/dashboard", status_code=303)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "request": request,
+                "next_url": next or "/dashboard",
+                "errors": [],
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/login", response_class=HTMLResponse)
+    async def login_submit(request: Request) -> Any:
+        settings = get_auth_settings()
+        form = _parse_urlencoded_form(await request.body())
+        username = form.get("username", "")
+        password = form.get("password", "")
+        next_url = form.get("next", "/dashboard") or "/dashboard"
+
+        if credentials_are_valid(username, password, settings):
+            response = RedirectResponse(url=next_url, status_code=303)
+            set_session_cookie(response, username, settings)
+            return response
+
+        return TEMPLATES.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "request": request,
+                "next_url": next_url,
+                "errors": ["Invalid username or password."],
+                "auth": _auth_context(request),
+            },
+            status_code=401,
+        )
+
+    @app.get("/logout")
+    def logout() -> RedirectResponse:
+        response = RedirectResponse(url="/login", status_code=303)
+        clear_session_cookie(response)
+        return response
 
     def store() -> ReportStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
@@ -240,6 +320,7 @@ def create_app(
                 "reports": reports,
                 "service": "VendorVerdict",
                 "version": __version__,
+                "auth": _auth_context(request),
             },
         )
 
@@ -259,6 +340,7 @@ def create_app(
                     "export_markdown": True,
                     "export_pdf": True,
                 },
+                "auth": _auth_context(request),
             },
         )
 
@@ -289,6 +371,7 @@ def create_app(
                         "export_markdown": export_markdown,
                         "export_pdf": export_pdf,
                     },
+                    "auth": _auth_context(request),
                 },
                 status_code=400,
             )
@@ -312,6 +395,7 @@ def create_app(
                         "export_markdown": export_markdown,
                         "export_pdf": export_pdf,
                     },
+                    "auth": _auth_context(request),
                 },
                 status_code=200,
             )
@@ -345,6 +429,7 @@ def create_app(
                 "sources": report.evidence_items,
                 "markdown_url": f"/reports/{report_id}/markdown",
                 "pdf_url": f"/reports/{report_id}/pdf",
+                "auth": _auth_context(request),
             },
         )
 
@@ -356,6 +441,37 @@ def _env_bool(name: str, *, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_public_path(path: str) -> bool:
+    if path in {"/health", "/login", "/logout", "/favicon.ico"}:
+        return True
+    if path.startswith("/static/"):
+        return True
+    return False
+
+
+def _wants_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept or "application/xhtml+xml" in accept
+
+
+def _is_browser_route(request: Request) -> bool:
+    if request.method != "GET":
+        return False
+    path = request.url.path
+    return path == "/" or path == "/docs" or path.startswith("/dashboard") or path.startswith("/reviews")
+
+
+def _auth_context(request: Request) -> dict[str, Any]:
+    settings = get_auth_settings()
+    username = authenticated_username(request, settings)
+    return {
+        "enabled": settings.enabled,
+        "configured": auth_is_configured(settings),
+        "username": username,
+        "is_authenticated": bool(username),
+    }
 
 
 def _get_report_or_404(store: ReportStore, report_id: str) -> ReportRecord:

@@ -170,3 +170,15 @@ The API is the bridge from the agent MVP to a production SaaS product:
 ## Safety note
 
 VendorVerdict provides procurement guidance based on public evidence and configured fallback data. It is not legal advice, financial advice, or a formal security audit.
+
+## Authentication
+
+When `VENDORVERDICT_AUTH_ENABLED=1` or `VENDORVERDICT_AUTH_PASSWORD` is configured, all API endpoints except `/health` require authentication.
+
+Use HTTP Basic authentication for API clients:
+
+```bash
+curl -u admin:your-password http://127.0.0.1:8080/reports
+```
+
+Browser users can log in at `/login`. See `docs/AUTHENTICATION.md`.

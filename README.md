@@ -608,3 +608,26 @@ The dashboard supports:
 - opening the underlying API endpoints.
 
 See `docs/DASHBOARD.md` for details.
+
+## Dashboard and API authentication
+
+VendorVerdict now supports simple production authentication for the dashboard, API, and report downloads.
+
+Authentication is enabled when either `VENDORVERDICT_AUTH_ENABLED=1` is set or `VENDORVERDICT_AUTH_PASSWORD` is configured.
+
+Example local setup:
+
+```bash
+VENDORVERDICT_AUTH_ENABLED=1
+VENDORVERDICT_AUTH_USERNAME=admin
+VENDORVERDICT_AUTH_PASSWORD=change-this-password
+VENDORVERDICT_AUTH_SECRET=change-this-long-random-secret
+```
+
+Protected browser routes redirect to `/login`. API clients can use HTTP Basic authentication:
+
+```bash
+curl -u admin:change-this-password http://127.0.0.1:8080/reports
+```
+
+`/health`, `/login`, `/logout`, and static assets remain public. See `docs/AUTHENTICATION.md` for production setup details.

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Login · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card narrow auth-card">
+  <p class="eyebrow">Protected dashboard</p>
+  <h1>Login to VendorVerdict</h1>
+  <p class="lead">Enter the admin credentials configured for this deployment.</p>
+
+  {% if errors %}
+    <div class="alert">
+      {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="/login" class="review-form">
+    <input type="hidden" name="next" value="{{ next_url }}">
+
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <div class="hero-actions">
+      <button class="button" type="submit">Login</button>
+      <a class="button secondary" href="/health">Health check</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
