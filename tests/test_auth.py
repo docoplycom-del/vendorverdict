@@ -36,6 +36,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
 
+    def test_landing_page_remains_public_when_auth_is_enabled(self) -> None:
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Evidence-backed vendor reviews", response.text)
+
     def test_dashboard_redirects_to_login_without_session(self) -> None:
         response = self.client.get("/dashboard", follow_redirects=False)
         self.assertEqual(response.status_code, 303)

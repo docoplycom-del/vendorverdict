@@ -688,3 +688,7 @@ VENDORVERDICT_ALERT_COOLDOWN_SECONDS=3600
 ```
 
 See `docs/ALERTS.md` and `docs/MONITORING.md`.
+
+## Product polish
+
+The production dashboard includes a public landing page, favicon, a guided report builder, clearer report cards, and improved report detail pages with evidence and source snapshots. See `docs/PRODUCT_POLISH.md`.

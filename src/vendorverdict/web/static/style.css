@@ -81,3 +81,41 @@ th { color: var(--muted); font-size: .85rem; }
   padding: 0.85rem 1rem;
   width: 100%;
 }
+
+/* Product polish */
+.landing-hero h1 { max-width: 780px; }
+.grid-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.feature-icon { display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: 999px; background: rgba(40,213,255,.15); border: 1px solid rgba(40,213,255,.45); color: var(--accent-2); font-weight: 900; margin-bottom: .7rem; }
+.landing-cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.full-width { grid-column: 1 / -1; }
+.review-builder input[type="text"],
+.review-builder select,
+.review-form input[type="text"],
+.review-form input[type="password"],
+.review-form select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(3,8,24,.72);
+  color: var(--text);
+  padding: .85rem 1rem;
+  font: inherit;
+}
+.review-form select { appearance: none; }
+.review-form small { color: var(--muted); display: block; margin-top: .35rem; line-height: 1.35; }
+.advanced-query { border: 1px solid var(--line); border-radius: 16px; padding: 1rem; background: rgba(255,255,255,.035); }
+.advanced-query summary { cursor: pointer; font-weight: 900; color: var(--accent-2); }
+.advanced-query textarea { margin-top: .8rem; }
+.checkbox-row.cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.checkbox-row.cards label { border: 1px solid var(--line); border-radius: 14px; padding: .8rem .9rem; background: rgba(255,255,255,.045); }
+.section-head.inline { margin: 0 0 1rem; }
+.report-metrics { margin: 1rem 0; }
+.report-metrics .metric { min-height: 86px; }
+.report-metrics .metric strong { font-size: 1.35rem; }
+.card a { color: var(--accent-2); }
+@media (max-width: 900px) {
+  .grid-three, .form-grid, .checkbox-row.cards { grid-template-columns: 1fr; }
+  .landing-cta { display: block; }
+  .landing-cta .button { margin-top: 1rem; }
+}

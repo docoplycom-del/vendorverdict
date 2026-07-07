@@ -16,6 +16,12 @@
   </div>
 </section>
 
+<section class="metric-grid report-metrics">
+  <div class="metric"><strong>{{ report.recommended_vendor or 'Review' }}</strong><span>recommended vendor</span></div>
+  <div class="metric"><strong>{{ finding_count }}</strong><span>evidence findings</span></div>
+  <div class="metric"><strong>{{ source_count }}</strong><span>source checks</span></div>
+</section>
+
 <section class="grid-two">
   <div class="card">
     <h2>Scorecard</h2>
@@ -25,7 +31,7 @@
         <tbody>
         {% for row in scorecard %}
           <tr>
-            <td>{{ row.vendor }}</td>
+            <td><strong>{{ row.vendor }}</strong></td>
             <td>{{ row.overall }}</td>
             <td>{{ row.security }}</td>
             <td>{{ row.privacy }}</td>
@@ -50,7 +56,13 @@
 </section>
 
 <section class="card">
-  <h2>Evidence-backed findings</h2>
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Citation-ready extraction</p>
+      <h2>Evidence-backed findings</h2>
+    </div>
+    <span class="pill">Showing up to 12</span>
+  </div>
   {% if findings %}
     <div class="finding-grid">
       {% for finding in findings[:12] %}
@@ -63,6 +75,29 @@
     </div>
   {% else %}
     <p class="muted">No extracted findings were stored for this report.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Official-source snapshot</h2>
+  {% if sources %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Vendor</th><th>Source type</th><th>Status</th><th>URL</th></tr></thead>
+        <tbody>
+          {% for source in sources[:20] %}
+            <tr>
+              <td>{{ source.get('vendor') }}</td>
+              <td>{{ source.get('source_type') or source.get('kind') }}</td>
+              <td>{{ source.get('status') or source.get('http_status') }}</td>
+              <td><a href="{{ source.get('url') }}" rel="noreferrer">{{ source.get('url') }}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No source snapshot was stored for this report.</p>
   {% endif %}
 </section>
 

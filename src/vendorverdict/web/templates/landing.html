@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict · AI procurement reports{% endblock %}
+{% block content %}
+<section class="hero card landing-hero">
+  <div>
+    <p class="eyebrow">SaaS procurement intelligence</p>
+    <h1>Evidence-backed vendor reviews in minutes.</h1>
+    <p class="lead">VendorVerdict helps teams compare SaaS vendors, collect public evidence, score procurement risk, and export client-ready PDF reports.</p>
+    <div class="hero-actions">
+      <a class="button" href="/login">Login to dashboard</a>
+      <a class="button secondary" href="/health">Check service health</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>{{ report_count }}</strong><span>saved report{{ '' if report_count == 1 else 's' }}</span></div>
+    <div class="metric"><strong>PDF</strong><span>shareable exports</span></div>
+    <div class="metric"><strong>Auth</strong><span>protected dashboard</span></div>
+  </div>
+</section>
+
+<section class="grid-three polish-cards">
+  <article class="card">
+    <span class="feature-icon">1</span>
+    <h2>Describe the purchase</h2>
+    <p>Enter vendors, use case, region, team size, and data sensitivity. VendorVerdict turns that into a structured review request.</p>
+  </article>
+  <article class="card">
+    <span class="feature-icon">2</span>
+    <h2>Collect evidence</h2>
+    <p>Known vendors use curated official URLs. Unknown vendors use source discovery and low-confidence safeguards.</p>
+  </article>
+  <article class="card">
+    <span class="feature-icon">3</span>
+    <h2>Export the report</h2>
+    <p>Generate ranked scorecards, critic notes, due-diligence questions, and PDF/Markdown artifacts.</p>
+  </article>
+</section>
+
+<section class="card landing-cta">
+  <div>
+    <p class="eyebrow">Production deployment</p>
+    <h2>Ready for protected internal use.</h2>
+    <p class="muted">This instance has authentication, persistent storage, backups, monitoring, and alert hooks enabled.</p>
+  </div>
+  <a class="button" href="/dashboard">Open dashboard</a>
+</section>
+{% endblock %}

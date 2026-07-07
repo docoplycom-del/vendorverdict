@@ -188,15 +188,27 @@ def create_app(
             or "reports"
         )
 
-    @app.get("/")
-    def root() -> dict[str, Any]:
-        return {
-            "service": "vendorverdict-api",
-            "version": __version__,
-            "docs": "/docs",
-            "dashboard": "/dashboard",
-            "health": "/health",
-        }
+    @app.get("/", response_class=HTMLResponse)
+    def landing(request: Request) -> HTMLResponse:
+        report_count = len(store().list_reports(limit=100))
+        return TEMPLATES.TemplateResponse(
+            request,
+            "landing.html",
+            {
+                "request": request,
+                "report_count": report_count,
+                "version": __version__,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/favicon.ico")
+    def favicon_ico() -> FileResponse:
+        return FileResponse(str(WEB_DIR / "static" / "favicon.ico"), media_type="image/x-icon")
+
+    @app.get("/favicon.png")
+    def favicon_png() -> FileResponse:
+        return FileResponse(str(WEB_DIR / "static" / "favicon.png"), media_type="image/png")
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -334,12 +346,7 @@ def create_app(
                 "default_query": DEMO_QUERY,
                 "errors": [],
                 "draft_response": "",
-                "values": {
-                    "query": DEMO_QUERY,
-                    "live_evidence": False,
-                    "export_markdown": True,
-                    "export_pdf": True,
-                },
+                "values": _dashboard_default_values(),
                 "auth": _auth_context(request),
             },
         )
@@ -347,14 +354,15 @@ def create_app(
     @app.post("/reviews/run", response_class=HTMLResponse)
     async def run_review_from_dashboard(request: Request):
         form = _parse_urlencoded_form(await request.body())
-        query = form.get("query", "").strip()
+        query = _compose_dashboard_query(form)
+        values = _dashboard_values_from_form(form, query=query)
         use_live_evidence = form.get("live_evidence") in {"1", "true", "on", "yes"}
         export_markdown = form.get("export_markdown") in {"1", "true", "on", "yes"}
         export_pdf = form.get("export_pdf") in {"1", "true", "on", "yes"}
 
         errors: list[str] = []
         if len(query) < 5:
-            errors.append("Enter a vendor review question with at least one vendor and a use case.")
+            errors.append("Enter at least two vendors and a use case, or write a full review question.")
 
         if errors:
             return TEMPLATES.TemplateResponse(
@@ -365,12 +373,7 @@ def create_app(
                     "default_query": DEMO_QUERY,
                     "errors": errors,
                     "draft_response": "",
-                    "values": {
-                        "query": query,
-                        "live_evidence": use_live_evidence,
-                        "export_markdown": export_markdown,
-                        "export_pdf": export_pdf,
-                    },
+                    "values": values,
                     "auth": _auth_context(request),
                 },
                 status_code=400,
@@ -389,12 +392,7 @@ def create_app(
                     "default_query": DEMO_QUERY,
                     "errors": ["VendorVerdict needs clarification before it can save a report."],
                     "draft_response": report_text,
-                    "values": {
-                        "query": query,
-                        "live_evidence": use_live_evidence,
-                        "export_markdown": export_markdown,
-                        "export_pdf": export_pdf,
-                    },
+                    "values": values,
                     "auth": _auth_context(request),
                 },
                 status_code=200,
@@ -405,7 +403,17 @@ def create_app(
             verdict,
             report_text,
             raw_query=query,
-            metadata={"client": "vendorverdict-dashboard", "live_evidence": use_live_evidence},
+            metadata={
+                "client": "vendorverdict-dashboard",
+                "live_evidence": use_live_evidence,
+                "dashboard_form": {
+                    "vendors": values.get("vendors", ""),
+                    "use_case": values.get("use_case", ""),
+                    "team_size": values.get("team_size", ""),
+                    "region": values.get("region", ""),
+                    "data_sensitivity": values.get("data_sensitivity", ""),
+                },
+            },
         )
         if export_markdown:
             export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
@@ -427,6 +435,8 @@ def create_app(
                 "scorecard": report.scores_json,
                 "findings": report.evidence_findings,
                 "sources": report.evidence_items,
+                "source_count": len(report.evidence_items),
+                "finding_count": len(report.evidence_findings),
                 "markdown_url": f"/reports/{report_id}/markdown",
                 "pdf_url": f"/reports/{report_id}/pdf",
                 "auth": _auth_context(request),
@@ -444,7 +454,7 @@ def _env_bool(name: str, *, default: bool) -> bool:
 
 
 def _is_public_path(path: str) -> bool:
-    if path in {"/health", "/login", "/logout", "/favicon.ico"}:
+    if path in {"/", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
         return True
     if path.startswith("/static/"):
         return True
@@ -523,6 +533,56 @@ def _run_response(record: ReportRecord, exports: dict[str, str] | None = None) -
         exports=exports or {},
     )
 
+
+
+def _dashboard_default_values() -> dict[str, Any]:
+    return {
+        "vendors": "Notion, Airtable",
+        "use_case": "storing client project data",
+        "team_size": "10",
+        "region": "UK",
+        "data_sensitivity": "medium-high",
+        "query": DEMO_QUERY,
+        "live_evidence": False,
+        "export_markdown": True,
+        "export_pdf": True,
+    }
+
+
+def _dashboard_values_from_form(form: dict[str, str], *, query: str) -> dict[str, Any]:
+    return {
+        "vendors": form.get("vendors", "").strip(),
+        "use_case": form.get("use_case", "").strip(),
+        "team_size": form.get("team_size", "").strip(),
+        "region": form.get("region", "").strip(),
+        "data_sensitivity": form.get("data_sensitivity", "").strip(),
+        "query": query or form.get("query", "").strip(),
+        "live_evidence": form.get("live_evidence") in {"1", "true", "on", "yes"},
+        "export_markdown": form.get("export_markdown") in {"1", "true", "on", "yes"},
+        "export_pdf": form.get("export_pdf") in {"1", "true", "on", "yes"},
+    }
+
+
+def _compose_dashboard_query(form: dict[str, str]) -> str:
+    explicit_query = form.get("query", "").strip()
+    vendors = form.get("vendors", "").strip()
+    use_case = form.get("use_case", "").strip()
+    team_size = form.get("team_size", "").strip()
+    region = form.get("region", "").strip()
+    data_sensitivity = form.get("data_sensitivity", "").strip()
+
+    if vendors and use_case:
+        details: list[str] = []
+        if team_size:
+            details.append(f"for a {team_size}-person team")
+        if region:
+            details.append(f"in {region}")
+        if data_sensitivity:
+            details.append(f"with {data_sensitivity} data sensitivity")
+        suffix = " " + " ".join(details) if details else ""
+        return f"Compare {vendors} for {use_case}{suffix}."
+
+    return explicit_query
 
 def _parse_urlencoded_form(body: bytes) -> dict[str, str]:
     parsed = parse_qs(body.decode("utf-8"), keep_blank_values=True)

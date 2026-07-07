@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}New VendorVerdict Review{% endblock %}
 {% block content %}
-<section class="card narrow">
+<section class="card narrow review-builder">
   <p class="eyebrow">New review</p>
   <h1>Create a vendor-risk report</h1>
-  <p class="lead">Describe the SaaS vendors, intended use case, team size, region, and data sensitivity. VendorVerdict will create a persistent report.</p>
+  <p class="lead">Use the guided fields for a clean procurement review, or paste a full review question in the advanced box.</p>
 
   {% if errors %}
     <div class="alert">
@@ -13,10 +13,42 @@
   {% endif %}
 
   <form method="post" action="/reviews/run" class="review-form">
-    <label for="query">Review question</label>
-    <textarea id="query" name="query" rows="7" required>{{ values.query }}</textarea>
+    <div class="form-grid">
+      <div>
+        <label for="vendors">Vendors</label>
+        <input id="vendors" name="vendors" type="text" value="{{ values.vendors }}" placeholder="Notion, Airtable">
+        <small>Separate vendors with commas.</small>
+      </div>
+      <div>
+        <label for="use_case">Use case</label>
+        <input id="use_case" name="use_case" type="text" value="{{ values.use_case }}" placeholder="storing client project data">
+      </div>
+      <div>
+        <label for="team_size">Team size</label>
+        <input id="team_size" name="team_size" type="text" value="{{ values.team_size }}" placeholder="10">
+      </div>
+      <div>
+        <label for="region">Region</label>
+        <input id="region" name="region" type="text" value="{{ values.region }}" placeholder="UK">
+      </div>
+      <div class="full-width">
+        <label for="data_sensitivity">Data sensitivity</label>
+        <select id="data_sensitivity" name="data_sensitivity">
+          {% for option in ["low", "medium", "medium-high", "high"] %}
+            <option value="{{ option }}" {% if values.data_sensitivity == option %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
 
-    <div class="checkbox-row">
+    <details class="advanced-query">
+      <summary>Advanced: write the full review question instead</summary>
+      <label for="query">Full review question</label>
+      <textarea id="query" name="query" rows="5">{{ values.query }}</textarea>
+      <small>If vendors and use case are filled above, VendorVerdict will use the guided fields.</small>
+    </details>
+
+    <div class="checkbox-row cards">
       <label><input type="checkbox" name="live_evidence" value="1" {% if values.live_evidence %}checked{% endif %}> Use live official-source checks</label>
       <label><input type="checkbox" name="export_markdown" value="1" {% if values.export_markdown %}checked{% endif %}> Export Markdown</label>
       <label><input type="checkbox" name="export_pdf" value="1" {% if values.export_pdf %}checked{% endif %}> Export PDF</label>
