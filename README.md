@@ -653,3 +653,17 @@ sudo ls -la /var/backups/vendorverdict
 ```
 
 See `docs/BACKUPS.md` for restore instructions.
+
+## Production monitoring
+
+The Google Cloud VM deployment includes lightweight systemd monitoring for service health, HTTPS reachability, database integrity, backup freshness, and disk usage.
+
+Key commands on the VM:
+
+```bash
+sudo systemctl start vendorverdict-monitor
+sudo journalctl -u vendorverdict-monitor -n 100 --no-pager
+sudo /opt/vendorverdict/scripts/status_vendorverdict.sh
+```
+
+See `docs/MONITORING.md` for setup and troubleshooting.

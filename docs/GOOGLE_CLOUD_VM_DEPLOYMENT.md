@@ -267,3 +267,45 @@ sudo sqlite3 vendorverdict.sqlite3 'PRAGMA integrity_check;'
 ```
 
 See `docs/BACKUPS.md` for restore instructions.
+
+
+## Monitoring and health checks
+
+After the app, HTTPS, and backups are working, install the monitoring timer:
+
+```bash
+cd /tmp/vendorverdict
+git pull origin main
+
+sudo mkdir -p /opt/vendorverdict/scripts
+sudo install -m 0755 scripts/check_vendorverdict_health.sh /opt/vendorverdict/scripts/check_vendorverdict_health.sh
+sudo install -m 0755 scripts/status_vendorverdict.sh /opt/vendorverdict/scripts/status_vendorverdict.sh
+sudo cp deploy/gcp/vendorverdict-monitor.service /etc/systemd/system/vendorverdict-monitor.service
+sudo cp deploy/gcp/vendorverdict-monitor.timer /etc/systemd/system/vendorverdict-monitor.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now vendorverdict-monitor.timer
+```
+
+Set the public URL in `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_PUBLIC_URL=https://vendorverdict.docoply.com
+VENDORVERDICT_MONITOR_MAX_BACKUP_AGE_HOURS=36
+VENDORVERDICT_MONITOR_MAX_DISK_USED_PERCENT=85
+```
+
+Run a manual check:
+
+```bash
+sudo systemctl start vendorverdict-monitor
+sudo journalctl -u vendorverdict-monitor -n 100 --no-pager
+```
+
+For a full debugging snapshot:
+
+```bash
+sudo /opt/vendorverdict/scripts/status_vendorverdict.sh
+```
+
+See `docs/MONITORING.md`.

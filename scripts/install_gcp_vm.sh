@@ -44,16 +44,22 @@ if [ ! -f "${ENV_DIR}/vendorverdict.env" ]; then
   echo "Created ${ENV_DIR}/vendorverdict.env. Edit it and set real secrets before public deployment."
 fi
 
-sudo chmod +x "${APP_DIR}/scripts/backup_vendorverdict.sh" "${APP_DIR}/scripts/restore_vendorverdict_backup.sh"
+sudo chmod +x "${APP_DIR}/scripts/backup_vendorverdict.sh" "${APP_DIR}/scripts/restore_vendorverdict_backup.sh" "${APP_DIR}/scripts/check_vendorverdict_health.sh" "${APP_DIR}/scripts/status_vendorverdict.sh"
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict.service" /etc/systemd/system/vendorverdict.service
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-backup.service" /etc/systemd/system/vendorverdict-backup.service
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-backup.timer" /etc/systemd/system/vendorverdict-backup.timer
+sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-monitor.service" /etc/systemd/system/vendorverdict-monitor.service
+sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-monitor.timer" /etc/systemd/system/vendorverdict-monitor.timer
 sudo systemctl daemon-reload
 sudo systemctl enable vendorverdict
 sudo systemctl enable --now vendorverdict-backup.timer
+sudo systemctl enable --now vendorverdict-monitor.timer
 sudo systemctl restart vendorverdict
 sudo systemctl status vendorverdict --no-pager
 sudo systemctl status vendorverdict-backup.timer --no-pager
+sudo systemctl status vendorverdict-monitor.timer --no-pager
 
 echo "VendorVerdict is running locally on the VM. Test with: curl http://127.0.0.1:8080/health"
 echo "Backups are scheduled. Run one now with: sudo systemctl start vendorverdict-backup"
+echo "Monitoring is scheduled. Run checks now with: sudo systemctl start vendorverdict-monitor"
+echo "One-shot status command: sudo /opt/vendorverdict/scripts/status_vendorverdict.sh"

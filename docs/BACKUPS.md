@@ -103,3 +103,10 @@ Example future command:
 ```bash
 gsutil rsync -r /var/backups/vendorverdict gs://YOUR_BUCKET/vendorverdict-backups
 ```
+
+
+## Backup freshness monitoring
+
+The production monitor checks that `/var/backups/vendorverdict/latest` exists, passes SHA256 verification, and is not older than `VENDORVERDICT_MONITOR_MAX_BACKUP_AGE_HOURS`.
+
+See `docs/MONITORING.md` for the monitoring timer.

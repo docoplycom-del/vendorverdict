@@ -1,0 +1,16 @@
+[Unit]
+Description=Run VendorVerdict production health checks
+After=network-online.target vendorverdict.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/vendorverdict/vendorverdict.env
+ExecStart=/opt/vendorverdict/scripts/check_vendorverdict_health.sh
+User=root
+Group=root
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/var/lib/vendorverdict /var/backups/vendorverdict /etc/vendorverdict
