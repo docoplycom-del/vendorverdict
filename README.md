@@ -667,3 +667,24 @@ sudo /opt/vendorverdict/scripts/status_vendorverdict.sh
 ```
 
 See `docs/MONITORING.md` for setup and troubleshooting.
+
+### Production alerts
+
+The Google Cloud VM monitoring layer can now send alerts when production checks fail.
+
+Supported channels:
+
+- generic/Slack-style webhook using `{ "text": "..." }`
+- Discord webhook using `{ "content": "..." }`
+- local `mail` or `sendmail` if configured on the VM
+
+Key settings:
+
+```env
+VENDORVERDICT_ALERT_ENABLED=1
+VENDORVERDICT_ALERT_WEBHOOK_URL=https://example.com/your-webhook-url
+VENDORVERDICT_ALERT_WEBHOOK_FORMAT=generic
+VENDORVERDICT_ALERT_COOLDOWN_SECONDS=3600
+```
+
+See `docs/ALERTS.md` and `docs/MONITORING.md`.

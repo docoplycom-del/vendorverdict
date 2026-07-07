@@ -124,3 +124,34 @@ Create a fresh backup and inspect the latest folder:
 sudo systemctl start vendorverdict-backup
 sudo bash -lc 'cd /var/backups/vendorverdict/latest && sha256sum -c SHA256SUMS'
 ```
+
+## Alerts
+
+The monitor can send an alert when one or more checks fail.
+
+Install the alert sender:
+
+```bash
+sudo mkdir -p /opt/vendorverdict/scripts /var/lib/vendorverdict/monitor
+sudo install -m 0755 scripts/send_vendorverdict_alert.sh /opt/vendorverdict/scripts/send_vendorverdict_alert.sh
+sudo install -m 0755 scripts/check_vendorverdict_health.sh /opt/vendorverdict/scripts/check_vendorverdict_health.sh
+sudo cp deploy/gcp/vendorverdict-monitor.service /etc/systemd/system/vendorverdict-monitor.service
+sudo systemctl daemon-reload
+```
+
+Enable alerts in `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_ALERT_ENABLED=1
+VENDORVERDICT_ALERT_WEBHOOK_URL=https://example.com/your-webhook-url
+VENDORVERDICT_ALERT_WEBHOOK_FORMAT=generic
+VENDORVERDICT_ALERT_COOLDOWN_SECONDS=3600
+```
+
+Send a direct test alert:
+
+```bash
+printf 'VendorVerdict test alert\n' | sudo /opt/vendorverdict/scripts/send_vendorverdict_alert.sh 'VendorVerdict test alert'
+```
+
+See `docs/ALERTS.md` for webhook formats, email fallback, and failure-test instructions.

@@ -27,10 +27,11 @@ CURL_TIMEOUT="${VENDORVERDICT_MONITOR_CURL_TIMEOUT_SECONDS:-10}"
 
 failures=0
 warnings=0
+events=()
 
 ok() { printf 'OK: %s\n' "$*"; }
-warn() { printf 'WARN: %s\n' "$*" >&2; warnings=$((warnings + 1)); }
-fail() { printf 'FAIL: %s\n' "$*" >&2; failures=$((failures + 1)); }
+warn() { local msg="$*"; printf 'WARN: %s\n' "${msg}" >&2; warnings=$((warnings + 1)); events+=("WARN: ${msg}"); }
+fail() { local msg="$*"; printf 'FAIL: %s\n' "${msg}" >&2; failures=$((failures + 1)); events+=("FAIL: ${msg}"); }
 
 http_code() {
   local url="$1"
@@ -148,5 +149,30 @@ fi
 printf 'VendorVerdict health check finished with %s failure(s), %s warning(s).\n' "${failures}" "${warnings}"
 
 if [ "${failures}" -gt 0 ]; then
+  if [ "${VENDORVERDICT_ALERT_ENABLED:-0}" = "1" ]; then
+    alert_script="${VENDORVERDICT_ALERT_SCRIPT:-/opt/vendorverdict/scripts/send_vendorverdict_alert.sh}"
+    if [ -x "${alert_script}" ]; then
+      {
+        printf 'VendorVerdict monitor detected %s failure(s) and %s warning(s).\n' "${failures}" "${warnings}"
+        printf 'Timestamp: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf 'Host: %s\n' "$(hostname -f 2>/dev/null || hostname)"
+        printf 'Service: %s\n' "${SERVICE_NAME}"
+        printf 'Local URL: %s\n' "${LOCAL_URL}"
+        if [ -n "${PUBLIC_URL}" ]; then
+          printf 'Public URL: %s\n' "${PUBLIC_URL}"
+        fi
+        printf '\nFailure / warning details:\n'
+        if [ "${#events[@]}" -gt 0 ]; then
+          printf '%s\n' "${events[@]}"
+        else
+          printf 'No detailed events captured.\n'
+        fi
+        printf '\nRecent application logs:\n'
+        journalctl -u "${SERVICE_NAME}" -n 25 --no-pager 2>/dev/null || true
+      } | "${alert_script}" "VendorVerdict production alert: ${failures} failure(s)" || warn "alert script failed"
+    else
+      warn "alert script not found or not executable: ${alert_script}"
+    fi
+  fi
   exit 1
 fi

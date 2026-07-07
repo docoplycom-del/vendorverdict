@@ -52,6 +52,15 @@ fi
 section "Monitoring timer"
 sudo systemctl status vendorverdict-monitor.timer --no-pager -l || true
 
+section "Alerts"
+printf 'Enabled: %s\n' "${VENDORVERDICT_ALERT_ENABLED:-0}"
+printf 'Webhook configured: %s\n' "$([ -n "${VENDORVERDICT_ALERT_WEBHOOK_URL:-}" ] && echo yes || echo no)"
+printf 'Email recipient configured: %s\n' "$([ -n "${VENDORVERDICT_ALERT_EMAIL_TO:-}" ] && echo yes || echo no)"
+printf 'Cooldown seconds: %s\n' "${VENDORVERDICT_ALERT_COOLDOWN_SECONDS:-3600}"
+if [ -d "${VENDORVERDICT_ALERT_STATE_DIR:-/var/lib/vendorverdict/monitor}" ]; then
+  sudo ls -la "${VENDORVERDICT_ALERT_STATE_DIR:-/var/lib/vendorverdict/monitor}" || true
+fi
+
 section "Disk"
 df -h / /var/lib/vendorverdict /var/backups/vendorverdict 2>/dev/null || df -h
 

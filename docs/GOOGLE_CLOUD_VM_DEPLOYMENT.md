@@ -309,3 +309,34 @@ sudo /opt/vendorverdict/scripts/status_vendorverdict.sh
 ```
 
 See `docs/MONITORING.md`.
+
+## Optional production alerts
+
+After monitoring is installed, you can enable alerts so failures are pushed to a webhook or local mailer.
+
+Install the alert sender on the VM:
+
+```bash
+cd /tmp/vendorverdict
+git pull origin main
+sudo mkdir -p /opt/vendorverdict/scripts /var/lib/vendorverdict/monitor
+sudo install -m 0755 scripts/send_vendorverdict_alert.sh /opt/vendorverdict/scripts/send_vendorverdict_alert.sh
+sudo install -m 0755 scripts/check_vendorverdict_health.sh /opt/vendorverdict/scripts/check_vendorverdict_health.sh
+sudo cp deploy/gcp/vendorverdict-monitor.service /etc/systemd/system/vendorverdict-monitor.service
+sudo systemctl daemon-reload
+```
+
+Add alert settings to `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_ALERT_ENABLED=1
+VENDORVERDICT_ALERT_WEBHOOK_URL=https://example.com/your-webhook-url
+VENDORVERDICT_ALERT_WEBHOOK_FORMAT=generic
+VENDORVERDICT_ALERT_COOLDOWN_SECONDS=3600
+```
+
+Then test:
+
+```bash
+printf 'VendorVerdict test alert from production VM\n' | sudo /opt/vendorverdict/scripts/send_vendorverdict_alert.sh 'VendorVerdict test alert'
+```
