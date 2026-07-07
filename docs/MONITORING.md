@@ -155,3 +155,14 @@ printf 'VendorVerdict test alert\n' | sudo /opt/vendorverdict/scripts/send_vendo
 ```
 
 See `docs/ALERTS.md` for webhook formats, email fallback, and failure-test instructions.
+
+## Deployment-safe script permissions
+
+After manual deployments, operational scripts must be executable. The preferred fix is to use:
+
+```bash
+sudo scripts/deploy_gcp_vm.sh
+```
+
+The deploy script reinstalls health, status, alert, backup, and restore scripts with `0755` permissions before restarting systemd services.
+

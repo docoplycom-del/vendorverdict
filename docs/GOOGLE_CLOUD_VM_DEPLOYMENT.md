@@ -340,3 +340,18 @@ Then test:
 ```bash
 printf 'VendorVerdict test alert from production VM\n' | sudo /opt/vendorverdict/scripts/send_vendorverdict_alert.sh 'VendorVerdict test alert'
 ```
+
+
+## Safe deploy command
+
+For every production update, use the safe deploy script:
+
+```bash
+cd /tmp/vendorverdict
+git pull origin main
+sudo scripts/deploy_gcp_vm.sh
+```
+
+This script preserves `/opt/vendorverdict/.venv`, reinstalls scripts with executable permissions, restarts the app, waits for local `/health`, checks the public URL, and runs the monitor once.
+
+Do not run plain `rsync -a --delete /tmp/vendorverdict/ /opt/vendorverdict/`; it can delete the production virtual environment. See `docs/SAFE_DEPLOYMENT.md`.

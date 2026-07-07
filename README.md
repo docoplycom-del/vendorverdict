@@ -692,3 +692,16 @@ See `docs/ALERTS.md` and `docs/MONITORING.md`.
 ## Product polish
 
 The production dashboard includes a public landing page, favicon, a guided report builder, clearer report cards, and improved report detail pages with evidence and source snapshots. See `docs/PRODUCT_POLISH.md`.
+
+### Safe production deployment
+
+For production updates on the Google Cloud VM, use the safe deploy script instead of manual `rsync`:
+
+```bash
+cd /tmp/vendorverdict
+git pull origin main
+sudo scripts/deploy_gcp_vm.sh
+```
+
+This preserves `/opt/vendorverdict/.venv`, reinstalls operational scripts with executable permissions, restarts the service, checks local/public health, and runs the monitor once. See `docs/SAFE_DEPLOYMENT.md`.
+

@@ -44,7 +44,7 @@ if [ ! -f "${ENV_DIR}/vendorverdict.env" ]; then
   echo "Created ${ENV_DIR}/vendorverdict.env. Edit it and set real secrets before public deployment."
 fi
 
-sudo chmod +x "${APP_DIR}/scripts/backup_vendorverdict.sh" "${APP_DIR}/scripts/restore_vendorverdict_backup.sh" "${APP_DIR}/scripts/check_vendorverdict_health.sh" "${APP_DIR}/scripts/status_vendorverdict.sh" "${APP_DIR}/scripts/send_vendorverdict_alert.sh"
+sudo chmod +x "${APP_DIR}/scripts/backup_vendorverdict.sh" "${APP_DIR}/scripts/restore_vendorverdict_backup.sh" "${APP_DIR}/scripts/check_vendorverdict_health.sh" "${APP_DIR}/scripts/status_vendorverdict.sh" "${APP_DIR}/scripts/send_vendorverdict_alert.sh" "${APP_DIR}/scripts/deploy_gcp_vm.sh"
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict.service" /etc/systemd/system/vendorverdict.service
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-backup.service" /etc/systemd/system/vendorverdict-backup.service
 sudo cp "${APP_DIR}/deploy/gcp/vendorverdict-backup.timer" /etc/systemd/system/vendorverdict-backup.timer
