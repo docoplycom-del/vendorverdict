@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict Dashboard{% endblock %}
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Production dashboard</p>
+    <h1>VendorVerdict Dashboard</h1>
+    <p class="lead">Create, save, review, and export SaaS vendor-risk reports from the production API.</p>
+    <div class="hero-actions">
+      <a class="button" href="/reviews/new">Start new vendor review</a>
+      <a class="button secondary" href="/docs">Open API docs</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>{{ reports|length }}</strong><span>recent reports</span></div>
+    <div class="metric"><strong>PDF</strong><span>export ready</span></div>
+    <div class="metric"><strong>Live</strong><span>evidence + fallback</span></div>
+  </div>
+</section>
+
+<section class="section-head">
+  <h2>Recent reports</h2>
+  <a href="/reviews/new">Create report →</a>
+</section>
+
+{% if reports %}
+  <div class="report-list">
+    {% for report in reports %}
+      <article class="card report-card">
+        <div>
+          <p class="eyebrow">{{ report.mode.replace('_', ' ') }}</p>
+          <h3>{{ report.vendors|join(' vs ') }}</h3>
+          <p>{{ report.use_case or 'No use case recorded' }}</p>
+          <p class="muted">Created {{ report.created_at }}</p>
+        </div>
+        <div class="report-actions">
+          <span class="pill">Recommendation: {{ report.recommended_vendor or 'Needs review' }}</span>
+          <span class="pill">Confidence: {{ report.overall_confidence }}</span>
+          <a class="button small" href="/dashboard/reports/{{ report.report_id }}">View</a>
+          <a class="button small secondary" href="/reports/{{ report.report_id }}/pdf">PDF</a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty">
+    <h3>No saved reports yet</h3>
+    <p>Run your first SaaS vendor review to create a persistent report with PDF and Markdown exports.</p>
+    <a class="button" href="/reviews/new">Start review</a>
+  </div>
+{% endif %}
+{% endblock %}

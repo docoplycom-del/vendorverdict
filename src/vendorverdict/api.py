@@ -3,10 +3,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import parse_qs
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from vendorverdict import __version__
@@ -16,6 +19,10 @@ from vendorverdict.reporting import export_report_markdown, render_report_markdo
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
+
+
+WEB_DIR = Path(__file__).resolve().parent / "web"
+TEMPLATES = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 
 
 class RunReportRequest(BaseModel):
@@ -107,6 +114,7 @@ def create_app(
             "service": "vendorverdict-api",
             "version": __version__,
             "docs": "/docs",
+            "dashboard": "/dashboard",
             "health": "/health",
         }
 
@@ -217,6 +225,129 @@ def create_app(
             filename=path.name,
         )
 
+    if (WEB_DIR / "static").exists():
+        app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    def dashboard(request: Request) -> HTMLResponse:
+        report_store = store()
+        reports = report_store.list_reports(limit=25)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "dashboard.html",
+            {
+                "request": request,
+                "reports": reports,
+                "service": "VendorVerdict",
+                "version": __version__,
+            },
+        )
+
+    @app.get("/reviews/new", response_class=HTMLResponse)
+    def new_review(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "new_review.html",
+            {
+                "request": request,
+                "default_query": DEMO_QUERY,
+                "errors": [],
+                "draft_response": "",
+                "values": {
+                    "query": DEMO_QUERY,
+                    "live_evidence": False,
+                    "export_markdown": True,
+                    "export_pdf": True,
+                },
+            },
+        )
+
+    @app.post("/reviews/run", response_class=HTMLResponse)
+    async def run_review_from_dashboard(request: Request):
+        form = _parse_urlencoded_form(await request.body())
+        query = form.get("query", "").strip()
+        use_live_evidence = form.get("live_evidence") in {"1", "true", "on", "yes"}
+        export_markdown = form.get("export_markdown") in {"1", "true", "on", "yes"}
+        export_pdf = form.get("export_pdf") in {"1", "true", "on", "yes"}
+
+        errors: list[str] = []
+        if len(query) < 5:
+            errors.append("Enter a vendor review question with at least one vendor and a use case.")
+
+        if errors:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "new_review.html",
+                {
+                    "request": request,
+                    "default_query": DEMO_QUERY,
+                    "errors": errors,
+                    "draft_response": "",
+                    "values": {
+                        "query": query,
+                        "live_evidence": use_live_evidence,
+                        "export_markdown": export_markdown,
+                        "export_pdf": export_pdf,
+                    },
+                },
+                status_code=400,
+            )
+
+        collector = EvidenceCollector(use_live_checks=use_live_evidence)
+        verdict = build_vendor_verdict(query, collector=collector)
+        report_text = render_verdict(verdict)
+
+        if verdict.request.missing_fields or verdict.recommendation is None:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "new_review.html",
+                {
+                    "request": request,
+                    "default_query": DEMO_QUERY,
+                    "errors": ["VendorVerdict needs clarification before it can save a report."],
+                    "draft_response": report_text,
+                    "values": {
+                        "query": query,
+                        "live_evidence": use_live_evidence,
+                        "export_markdown": export_markdown,
+                        "export_pdf": export_pdf,
+                    },
+                },
+                status_code=200,
+            )
+
+        report_store = store()
+        report_id = report_store.save_report(
+            verdict,
+            report_text,
+            raw_query=query,
+            metadata={"client": "vendorverdict-dashboard", "live_evidence": use_live_evidence},
+        )
+        if export_markdown:
+            export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
+        if export_pdf:
+            export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+
+        return RedirectResponse(url=f"/dashboard/reports/{report_id}", status_code=303)
+
+    @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)
+    def dashboard_report_detail(request: Request, report_id: str) -> HTMLResponse:
+        report_store = store()
+        report = _get_report_or_404(report_store, report_id)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "report.html",
+            {
+                "request": request,
+                "report": report,
+                "scorecard": report.scores_json,
+                "findings": report.evidence_findings,
+                "sources": report.evidence_items,
+                "markdown_url": f"/reports/{report_id}/markdown",
+                "pdf_url": f"/reports/{report_id}/pdf",
+            },
+        )
+
     return app
 
 
@@ -275,6 +406,11 @@ def _run_response(record: ReportRecord, exports: dict[str, str] | None = None) -
         evidence_finding_count=len(record.evidence_findings),
         exports=exports or {},
     )
+
+
+def _parse_urlencoded_form(body: bytes) -> dict[str, str]:
+    parsed = parse_qs(body.decode("utf-8"), keep_blank_values=True)
+    return {key: values[-1] if values else "" for key, values in parsed.items()}
 
 
 def _record_to_dict(report: ReportRecord) -> dict[str, Any]:

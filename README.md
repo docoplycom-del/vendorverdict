@@ -581,3 +581,30 @@ curl -X POST http://127.0.0.1:8080/reports/run \
 ```
 
 The API returns a saved report ID plus links for JSON, Markdown, and PDF export. See `docs/API.md` for full endpoint details.
+
+## Production web dashboard
+
+VendorVerdict includes a lightweight FastAPI/Jinja2 dashboard for production report management.
+
+Run the API/web service:
+
+```bash
+vendorverdict-api --host 127.0.0.1 --port 8080
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8080/dashboard
+```
+
+The dashboard supports:
+
+- creating new vendor-risk reviews,
+- saving reports to SQLite,
+- viewing recent reports,
+- viewing report detail pages,
+- downloading Markdown and PDF exports,
+- opening the underlying API endpoints.
+
+See `docs/DASHBOARD.md` for details.

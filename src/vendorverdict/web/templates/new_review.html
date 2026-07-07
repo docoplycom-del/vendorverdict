@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}New VendorVerdict Review{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <p class="eyebrow">New review</p>
+  <h1>Create a vendor-risk report</h1>
+  <p class="lead">Describe the SaaS vendors, intended use case, team size, region, and data sensitivity. VendorVerdict will create a persistent report.</p>
+
+  {% if errors %}
+    <div class="alert">
+      {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="/reviews/run" class="review-form">
+    <label for="query">Review question</label>
+    <textarea id="query" name="query" rows="7" required>{{ values.query }}</textarea>
+
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="live_evidence" value="1" {% if values.live_evidence %}checked{% endif %}> Use live official-source checks</label>
+      <label><input type="checkbox" name="export_markdown" value="1" {% if values.export_markdown %}checked{% endif %}> Export Markdown</label>
+      <label><input type="checkbox" name="export_pdf" value="1" {% if values.export_pdf %}checked{% endif %}> Export PDF</label>
+    </div>
+
+    <div class="hero-actions">
+      <button class="button" type="submit">Generate report</button>
+      <a class="button secondary" href="/dashboard">Cancel</a>
+    </div>
+  </form>
+</section>
+
+{% if draft_response %}
+<section class="card narrow">
+  <h2>Clarification response</h2>
+  <pre class="report-text">{{ draft_response }}</pre>
+</section>
+{% endif %}
+{% endblock %}
