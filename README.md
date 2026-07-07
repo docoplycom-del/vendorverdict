@@ -631,3 +631,12 @@ curl -u admin:change-this-password http://127.0.0.1:8080/reports
 ```
 
 `/health`, `/login`, `/logout`, and static assets remain public. See `docs/AUTHENTICATION.md` for production setup details.
+
+
+## Google Cloud VM deployment
+
+VendorVerdict can be deployed on a Google Compute Engine VM using systemd plus Apache reverse proxy.
+
+The recommended pilot deployment stores the SQLite report database and generated reports on the VM at `/var/lib/vendorverdict`, runs the FastAPI dashboard on `127.0.0.1:8080`, and exposes it through an HTTPS subdomain such as `vendorverdict.docoply.com`.
+
+See [`docs/GOOGLE_CLOUD_VM_DEPLOYMENT.md`](docs/GOOGLE_CLOUD_VM_DEPLOYMENT.md).

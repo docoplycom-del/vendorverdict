@@ -1,0 +1,23 @@
+[Unit]
+Description=VendorVerdict FastAPI backend and dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=vendorverdict
+Group=www-data
+WorkingDirectory=/opt/vendorverdict
+EnvironmentFile=/etc/vendorverdict/vendorverdict.env
+ExecStart=/opt/vendorverdict/.venv/bin/vendorverdict-api --host 127.0.0.1 --port 8080
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+# Basic hardening. Keep this simple because the app needs outbound HTTPS for evidence checks.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/vendorverdict /var/log/vendorverdict /opt/vendorverdict
+
+[Install]
+WantedBy=multi-user.target
