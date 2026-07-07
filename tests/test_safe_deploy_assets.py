@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import os
 import stat
 import unittest
 
@@ -11,8 +12,9 @@ class SafeDeployAssetsTests(unittest.TestCase):
     def test_safe_deploy_script_exists_and_is_executable(self):
         script = ROOT / "scripts" / "deploy_gcp_vm.sh"
         self.assertTrue(script.exists())
-        mode = script.stat().st_mode
-        self.assertTrue(mode & stat.S_IXUSR)
+        if os.name != "nt":
+            mode = script.stat().st_mode
+            self.assertTrue(mode & stat.S_IXUSR)
 
     def test_safe_deploy_script_preserves_runtime_state(self):
         text = (ROOT / "scripts" / "deploy_gcp_vm.sh").read_text()
