@@ -1,0 +1,18 @@
+[Unit]
+Description=Back up VendorVerdict SQLite database and report exports
+Wants=vendorverdict.service
+After=vendorverdict.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/vendorverdict/vendorverdict.env
+ExecStart=/opt/vendorverdict/scripts/backup_vendorverdict.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/backups/vendorverdict /var/lib/vendorverdict /tmp

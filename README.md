@@ -640,3 +640,16 @@ VendorVerdict can be deployed on a Google Compute Engine VM using systemd plus A
 The recommended pilot deployment stores the SQLite report database and generated reports on the VM at `/var/lib/vendorverdict`, runs the FastAPI dashboard on `127.0.0.1:8080`, and exposes it through an HTTPS subdomain such as `vendorverdict.docoply.com`.
 
 See [`docs/GOOGLE_CLOUD_VM_DEPLOYMENT.md`](docs/GOOGLE_CLOUD_VM_DEPLOYMENT.md).
+
+
+### Google Cloud VM backups
+
+The Google Compute Engine deployment includes a systemd backup timer for the production SQLite database and report export directory.
+
+```bash
+sudo systemctl status vendorverdict-backup.timer --no-pager
+sudo systemctl start vendorverdict-backup
+sudo ls -la /var/backups/vendorverdict
+```
+
+See `docs/BACKUPS.md` for restore instructions.

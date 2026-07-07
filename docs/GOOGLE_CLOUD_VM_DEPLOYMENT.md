@@ -225,3 +225,45 @@ gcloud compute scp --zone "us-central1-c" "instance-20250730-190838:/tmp/vendorv
 - Store real secrets only in `/etc/vendorverdict/vendorverdict.env`.
 - Do not commit real credentials to GitHub.
 - Use a subdomain first to avoid disrupting any existing Apache/WordPress site on the VM.
+
+## Backups
+
+This deployment includes a nightly local backup timer for the SQLite database and exported report files.
+
+Backed-up paths:
+
+```text
+/var/lib/vendorverdict/vendorverdict.sqlite3
+/var/lib/vendorverdict/reports
+```
+
+Backup destination:
+
+```text
+/var/backups/vendorverdict
+```
+
+Check the timer:
+
+```bash
+sudo systemctl status vendorverdict-backup.timer --no-pager
+systemctl list-timers | grep vendorverdict
+```
+
+Run a backup manually:
+
+```bash
+sudo systemctl start vendorverdict-backup
+sudo journalctl -u vendorverdict-backup -n 60 --no-pager
+sudo ls -la /var/backups/vendorverdict
+```
+
+Verify the latest backup:
+
+```bash
+cd /var/backups/vendorverdict/latest
+sudo sha256sum -c SHA256SUMS
+sudo sqlite3 vendorverdict.sqlite3 'PRAGMA integrity_check;'
+```
+
+See `docs/BACKUPS.md` for restore instructions.
