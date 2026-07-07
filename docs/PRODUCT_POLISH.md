@@ -76,3 +76,7 @@ Expected:
 - `/` returns `200 OK` public landing page.
 - `/favicon.ico` returns `200 OK`.
 - `/dashboard` returns `303` to login when unauthenticated.
+
+## Customer demo flow
+
+The public landing page now links to `/demo`, a sample VendorVerdict report that can be shown to prospects before they log in. The protected dashboard also includes **Run sample review**, which creates a saved report and exports PDF/Markdown artifacts from the default demo scenario.

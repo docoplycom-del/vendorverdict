@@ -355,3 +355,19 @@ sudo scripts/deploy_gcp_vm.sh
 This script preserves `/opt/vendorverdict/.venv`, reinstalls scripts with executable permissions, restarts the app, waits for local `/health`, checks the public URL, and runs the monitor once.
 
 Do not run plain `rsync -a --delete /tmp/vendorverdict/ /opt/vendorverdict/`; it can delete the production virtual environment. See `docs/SAFE_DEPLOYMENT.md`.
+
+## Customer demo flow check
+
+After deployment, verify the public demo page and protected dashboard:
+
+```bash
+curl -i https://vendorverdict.docoply.com/demo
+curl -i https://vendorverdict.docoply.com/dashboard
+```
+
+Expected:
+
+```text
+/demo      -> 200 OK
+/dashboard -> 303 See Other when not logged in
+```

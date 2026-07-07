@@ -39,6 +39,29 @@ class DashboardTests(unittest.TestCase):
         png = self.client.get("/favicon.png")
         self.assertEqual(png.status_code, 200)
 
+
+    def test_public_demo_page_renders(self) -> None:
+        response = self.client.get("/demo")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("30-second customer demo", response.text)
+        self.assertIn("Sample vendor review", response.text)
+        self.assertIn("Ranked scorecard", response.text)
+        self.assertIn("Due-diligence email", response.text)
+
+    def test_dashboard_can_run_sample_review(self) -> None:
+        response = self.client.post("/reviews/sample", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/dashboard/reports/"))
+
+        detail = self.client.get(response.headers["location"])
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn("Notion vs Airtable vs Coda", detail.text)
+        self.assertIn("Download PDF", detail.text)
+
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn("Run sample review", dashboard.text)
+
     def test_dashboard_renders_empty_state(self) -> None:
         response = self.client.get("/dashboard")
         self.assertEqual(response.status_code, 200)

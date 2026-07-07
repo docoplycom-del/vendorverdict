@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Sample VendorVerdict Report{% endblock %}
+{% block content %}
+<section class="card demo-banner">
+  <div>
+    <p class="eyebrow">30-second customer demo</p>
+    <h1>Sample vendor review: Notion vs Airtable vs Coda</h1>
+    <p class="lead">This public preview shows the kind of scorecard, recommendation, risk notes, and due-diligence questions a pilot customer gets from VendorVerdict.</p>
+    <p class="muted">This sample uses deterministic offline evidence so it is fast and reliable. Production reports can also run live official-source checks and export PDF/Markdown artifacts.</p>
+    <div class="hero-actions">
+      <a class="button" href="/login">Login to run this report</a>
+      <a class="button secondary" href="/reviews/new">Create custom review</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>{{ winner.vendor if winner else 'Review' }}</strong><span>sample recommendation</span></div>
+    <div class="metric"><strong>{{ winner.overall if winner else '—' }}</strong><span>top overall score</span></div>
+    <div class="metric"><strong>{{ verdict.confidence }}</strong><span>confidence</span></div>
+  </div>
+</section>
+
+<section class="grid-two demo-summary">
+  <div class="card">
+    <p class="eyebrow">Decision preview</p>
+    <h2>What the buyer learns immediately</h2>
+    <ul class="check-list">
+      <li>Which vendor is safest for the use case.</li>
+      <li>How each vendor scores on security, privacy, pricing risk, lock-in, and SME fit.</li>
+      <li>What assumptions the review used.</li>
+      <li>Which follow-up questions to send before approval.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p class="eyebrow">Sample request</p>
+    <h2>Input</h2>
+    <p class="muted">{{ query }}</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Ranked scorecard</p>
+      <h2>Vendor comparison</h2>
+    </div>
+    <span class="pill">Generated sample</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rank</th><th>Vendor</th><th>Overall</th><th>Security</th><th>Privacy</th><th>Pricing</th><th>Lock-in</th><th>SME fit</th><th>Confidence</th></tr></thead>
+      <tbody>
+        {% for row in scorecard %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ row.vendor }}</strong></td>
+            <td>{{ row.overall }}</td>
+            <td>{{ row.security }}</td>
+            <td>{{ row.privacy }}</td>
+            <td>{{ row.pricing_predictability }}</td>
+            <td>{{ row.lock_in }}</td>
+            <td>{{ row.sme_fit }}</td>
+            <td>{{ row.confidence }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid-two">
+  <div class="card">
+    <h2>Assumptions</h2>
+    <ul>
+      {% for assumption in verdict.assumptions %}<li>{{ assumption }}</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Due-diligence email</h2>
+    <pre class="report-text compact-report">{{ verdict.due_diligence_email }}</pre>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Full sample report</h2>
+  <pre class="report-text">{{ report_text }}</pre>
+</section>
+{% endblock %}

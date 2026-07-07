@@ -705,3 +705,20 @@ sudo scripts/deploy_gcp_vm.sh
 
 This preserves `/opt/vendorverdict/.venv`, reinstalls operational scripts with executable permissions, restarts the service, checks local/public health, and runs the monitor once. See `docs/SAFE_DEPLOYMENT.md`.
 
+
+## Customer demo flow
+
+VendorVerdict includes a public 30-second demo page for pilot calls:
+
+```text
+https://vendorverdict.docoply.com/demo
+```
+
+The demo page renders a deterministic sample vendor-risk report without requiring login. Authenticated dashboard users can also click **Run sample review** to create a real saved sample report with PDF and Markdown exports.
+
+Use the safe production deploy script for this and future releases:
+
+```bash
+cd /tmp/vendorverdict
+sudo scripts/deploy_gcp_vm.sh
+```

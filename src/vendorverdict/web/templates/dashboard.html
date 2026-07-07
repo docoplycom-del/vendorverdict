@@ -8,6 +8,10 @@
     <p class="lead">Create, save, review, and export SaaS vendor-risk reports from the production API.</p>
     <div class="hero-actions">
       <a class="button" href="/reviews/new">Start new vendor review</a>
+      <form method="post" action="/reviews/sample" class="inline-form">
+        <button class="button secondary" type="submit">Run sample review</button>
+      </form>
+      <a class="button secondary" href="/demo">Public demo</a>
       <a class="button secondary" href="/docs">Open API docs</a>
     </div>
   </div>
@@ -23,7 +27,12 @@
     <p class="eyebrow">Saved procurement artifacts</p>
     <h2>Recent reports</h2>
   </div>
-  <a href="/reviews/new">Create report →</a>
+  <div class="section-actions">
+    <form method="post" action="/reviews/sample" class="inline-form">
+      <button class="link-button" type="submit">Run sample review →</button>
+    </form>
+    <a href="/reviews/new">Create report →</a>
+  </div>
 </section>
 
 {% if reports %}
@@ -50,7 +59,12 @@
   <div class="card empty">
     <h3>No saved reports yet</h3>
     <p>Run your first SaaS vendor review to create a persistent report with PDF and Markdown exports.</p>
-    <a class="button" href="/reviews/new">Start review</a>
+    <div class="hero-actions compact center">
+      <form method="post" action="/reviews/sample" class="inline-form">
+        <button class="button" type="submit">Run sample review</button>
+      </form>
+      <a class="button secondary" href="/reviews/new">Start custom review</a>
+    </div>
   </div>
 {% endif %}
 {% endblock %}

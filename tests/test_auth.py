@@ -75,6 +75,12 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(logout.status_code, 303)
         self.assertEqual(logout.headers["location"], "/login")
 
+
+    def test_demo_page_remains_public_when_auth_is_enabled(self):
+        response = self.client.get("/demo")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("30-second customer demo", response.text)
+
     def test_login_rejects_invalid_password(self) -> None:
         response = self.client.post(
             "/login",

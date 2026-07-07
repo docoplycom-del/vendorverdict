@@ -202,6 +202,24 @@ def create_app(
             },
         )
 
+    @app.get("/demo", response_class=HTMLResponse)
+    def public_demo_report(request: Request) -> HTMLResponse:
+        verdict = build_vendor_verdict(DEMO_QUERY, collector=EvidenceCollector(use_live_checks=False))
+        report_text = render_verdict(verdict)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "sample_report.html",
+            {
+                "request": request,
+                "query": DEMO_QUERY,
+                "verdict": verdict,
+                "scorecard": verdict.scores,
+                "winner": verdict.recommendation,
+                "report_text": report_text,
+                "auth": _auth_context(request),
+            },
+        )
+
     @app.get("/favicon.ico")
     def favicon_ico() -> FileResponse:
         return FileResponse(str(WEB_DIR / "static" / "favicon.ico"), media_type="image/x-icon")
@@ -351,6 +369,30 @@ def create_app(
             },
         )
 
+    @app.post("/reviews/sample")
+    def run_sample_review() -> RedirectResponse:
+        report_store = store()
+        collector = EvidenceCollector(use_live_checks=False)
+        verdict = build_vendor_verdict(DEMO_QUERY, collector=collector)
+        report_text = render_verdict(verdict)
+        if verdict.request.missing_fields or verdict.recommendation is None:
+            raise HTTPException(status_code=500, detail="Sample review could not be generated.")
+
+        report_id = report_store.save_report(
+            verdict,
+            report_text,
+            raw_query=DEMO_QUERY,
+            metadata={
+                "client": "vendorverdict-dashboard-sample",
+                "live_evidence": False,
+                "sample_review": True,
+                "demo_flow": "customer-demo",
+            },
+        )
+        export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
+        export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+        return RedirectResponse(url=f"/dashboard/reports/{report_id}", status_code=303)
+
     @app.post("/reviews/run", response_class=HTMLResponse)
     async def run_review_from_dashboard(request: Request):
         form = _parse_urlencoded_form(await request.body())
@@ -454,7 +496,7 @@ def _env_bool(name: str, *, default: bool) -> bool:
 
 
 def _is_public_path(path: str) -> bool:
-    if path in {"/", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
+    if path in {"/", "/demo", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
         return True
     if path.startswith("/static/"):
         return True
