@@ -37,9 +37,10 @@
             <tr>
               <td>{{ lead.created_at[:19].replace('T', ' ') }}<br><span class="pill">{{ lead.source }}</span></td>
               <td>
-                <strong>{{ lead.name }}</strong><br>
+                <a class="lead-name-link" href="/dashboard/leads/{{ lead.lead_id }}"><strong>{{ lead.name }}</strong></a><br>
                 <a href="mailto:{{ lead.email }}">{{ lead.email }}</a><br>
-                <span class="muted">{{ lead.company or '—' }}</span>
+                <span class="muted">{{ lead.company or '—' }}</span><br>
+                <a class="small-link" href="/dashboard/leads/{{ lead.lead_id }}">View lead →</a>
               </td>
               <td>
                 <strong>Vendors:</strong> {{ lead.vendors or '—' }}<br>

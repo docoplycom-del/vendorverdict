@@ -54,3 +54,31 @@ class LeadManagementTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class LeadFollowUpTemplateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = LeadStore(os.path.join(self.tmp.name, "followups.sqlite3"))
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_follow_up_templates_include_lead_context(self) -> None:
+        from vendorverdict.lead_followups import build_lead_followup_templates
+
+        lead_id = self.store.save_lead(
+            name="Alex Buyer",
+            email="alex@example.com",
+            company="Example Consulting",
+            vendors="Notion, Airtable",
+            use_case="client project data",
+            message="Interested in a pilot.",
+        )
+        lead = self.store.get_lead(lead_id)
+        self.assertIsNotNone(lead)
+        templates = build_lead_followup_templates(lead, app_base_url="https://vendorverdict.example")
+        self.assertEqual(len(templates), 3)
+        self.assertIn("Notion, Airtable", templates[0]["body"])
+        self.assertIn("client project data", templates[0]["body"])
+        self.assertIn("mailto:alex%40example.com", templates[0]["mailto_url"])
+        self.assertIn("founding pilot", templates[2]["body"].lower())

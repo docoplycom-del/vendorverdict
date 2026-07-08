@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Lead · {{ lead.name }}{% endblock %}
+{% block content %}
+<section class="card lead-detail-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot lead</p>
+      <h1>{{ lead.name }}</h1>
+      <p class="muted">{{ lead.company or 'No company provided' }} · {{ lead.created_at[:19].replace('T', ' ') }} · {{ lead.source }}</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="mailto:{{ lead.email }}">Email lead</a>
+      <a class="button secondary" href="/dashboard/leads.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard/leads">Back to leads</a>
+    </div>
+  </div>
+
+  <div class="grid-two lead-detail-grid">
+    <article class="card compact-card">
+      <h2>Request details</h2>
+      <dl class="detail-list">
+        <dt>Email</dt><dd><a href="mailto:{{ lead.email }}">{{ lead.email }}</a></dd>
+        <dt>Company</dt><dd>{{ lead.company or '—' }}</dd>
+        <dt>Vendors</dt><dd>{{ lead.vendors or '—' }}</dd>
+        <dt>Use case</dt><dd>{{ lead.use_case or '—' }}</dd>
+        <dt>Message</dt><dd>{{ lead.message or '—' }}</dd>
+        <dt>Notification</dt><dd>{{ lead.notification_status }}{% if lead.notification_error %}<br><span class="muted">{{ lead.notification_error }}</span>{% endif %}</dd>
+      </dl>
+    </article>
+
+    <article class="card compact-card">
+      <h2>Status and notes</h2>
+      <form class="lead-admin-form lead-detail-form" method="post" action="/dashboard/leads/{{ lead.lead_id }}/status">
+        <input type="hidden" name="next" value="/dashboard/leads/{{ lead.lead_id }}">
+        <label for="status-detail">Lead status</label>
+        <select id="status-detail" name="status">
+          {% for status in lead_statuses %}
+            <option value="{{ status }}" {% if lead.status == status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>
+          {% endfor %}
+        </select>
+        <label for="notes-detail">Internal notes</label>
+        <textarea id="notes-detail" name="notes" rows="8" placeholder="Add call notes, next step, objections, budget, owner, and follow-up date.">{{ lead.notes }}</textarea>
+        <button class="button" type="submit">Save lead update</button>
+      </form>
+    </article>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Copy / paste follow-up</p>
+      <h2>Email templates</h2>
+      <p class="muted">Use these templates to reply quickly. They do not send automatically.</p>
+    </div>
+  </div>
+  <div class="followup-grid">
+    {% for followup in followups %}
+      <article class="card compact-card followup-card">
+        <div class="section-head inline compact-head">
+          <h3>{{ followup.label }}</h3>
+          <a class="button secondary small-button" href="{{ followup.mailto_url }}">Open email</a>
+        </div>
+        <label>Subject</label>
+        <input readonly value="{{ followup.subject }}">
+        <label>Email body</label>
+        <textarea readonly rows="12">{{ followup.body }}</textarea>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

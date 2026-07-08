@@ -411,3 +411,7 @@ These are public routes and are intended for pilot customers reviewing the produ
 ## Lead management
 
 The protected dashboard includes a lead inbox at `/dashboard/leads` and a CSV export at `/dashboard/leads.csv`. The database schema migrates automatically on app start/deploy, so existing lead requests are preserved while adding status and notes fields.
+
+## Lead follow-up workflow
+
+After deploying the lead follow-up workflow, open `/dashboard/leads` and click `View lead` on any captured pilot request. The protected detail page includes status, notes, and copy/paste follow-up emails.

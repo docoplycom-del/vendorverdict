@@ -22,6 +22,7 @@ from vendorverdict.auth import (
     set_session_cookie,
 )
 from vendorverdict.cli import DEMO_QUERY
+from vendorverdict.lead_followups import build_lead_followup_templates
 from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
 from vendorverdict.pdf_export import export_report_pdf
@@ -603,7 +604,10 @@ def create_app(
         )
         if not updated:
             raise HTTPException(status_code=404, detail=f"Lead not found: {lead_id}")
-        return RedirectResponse(url="/dashboard/leads", status_code=303)
+        next_url = form.get("next", "/dashboard/leads")
+        if not next_url.startswith("/dashboard/leads"):
+            next_url = "/dashboard/leads"
+        return RedirectResponse(url=next_url, status_code=303)
 
     @app.get("/dashboard/leads.csv")
     def export_dashboard_leads_csv() -> PlainTextResponse:
@@ -612,6 +616,24 @@ def create_app(
             csv_text,
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="vendorverdict-leads.csv"'},
+        )
+
+
+    @app.get("/dashboard/leads/{lead_id}", response_class=HTMLResponse)
+    def dashboard_lead_detail(request: Request, lead_id: str) -> HTMLResponse:
+        lead = lead_store().get_lead(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=404, detail=f"Lead not found: {lead_id}")
+        return TEMPLATES.TemplateResponse(
+            request,
+            "lead_detail.html",
+            {
+                "request": request,
+                "lead": lead,
+                "lead_statuses": LEAD_STATUSES,
+                "followups": build_lead_followup_templates(lead, app_base_url=_public_base_url(request)),
+                "auth": _auth_context(request),
+            },
         )
 
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)

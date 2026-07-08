@@ -175,6 +175,28 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("qualified", csv_export.text)
         self.assertIn("Good fit for a founding pilot.", csv_export.text)
 
+        detail_path = match.group(1).replace("/status", "")
+        detail = self.client.get(detail_path)
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn("Pilot lead", detail.text)
+        self.assertIn("Copy / paste follow-up", detail.text)
+        self.assertIn("First reply", detail.text)
+        self.assertIn("Qualification questions", detail.text)
+        self.assertIn("Pilot package", detail.text)
+        self.assertIn("mailto:jordan%40example.com", detail.text)
+
+        detail_update = self.client.post(
+            match.group(1),
+            data={"status": "contacted", "notes": "Replied using first template.", "next": detail_path},
+            follow_redirects=False,
+        )
+        self.assertEqual(detail_update.status_code, 303)
+        self.assertEqual(detail_update.headers["location"], detail_path)
+
+        updated_detail = self.client.get(detail_path)
+        self.assertEqual(updated_detail.status_code, 200)
+        self.assertIn("Replied using first template.", updated_detail.text)
+
     def test_dashboard_can_run_sample_review(self) -> None:
         response = self.client.post("/reviews/sample", follow_redirects=False)
         self.assertEqual(response.status_code, 303)

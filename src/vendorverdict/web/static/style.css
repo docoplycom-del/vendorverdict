@@ -605,3 +605,52 @@ html body button.button:not(.secondary) {
   border: 1px solid #38bdf8 !important;
   text-shadow: none !important;
 }
+
+/* Lead follow-up detail workflow */
+.lead-detail-grid {
+  align-items: stretch;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.35fr) 1fr;
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 0;
+}
+
+.detail-list dt {
+  color: var(--vv-muted);
+  font-weight: 800;
+}
+
+.detail-list dd {
+  margin: 0;
+  color: var(--vv-text);
+  overflow-wrap: anywhere;
+}
+
+.followup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.followup-card textarea[readonly],
+.followup-card input[readonly] {
+  cursor: text;
+}
+
+.compact-head {
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.lead-name-link,
+.small-link {
+  color: var(--vv-link);
+  font-weight: 800;
+}
+
+.lead-detail-form textarea {
+  min-height: 12rem;
+}

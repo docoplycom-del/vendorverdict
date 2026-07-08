@@ -785,3 +785,7 @@ The inbox supports status updates (`new`, `contacted`, `qualified`, `won`, `lost
 ### Login contrast hardening
 
 The login form uses high-contrast auth inputs and autofill-safe CSS so admin usernames, password bullets, and placeholders remain readable in Chrome and other browsers. See `docs/LOGIN_CONTRAST_FIX.md`.
+
+### Lead follow-up workflow
+
+Captured pilot leads can now be opened from `/dashboard/leads/{lead_id}`. The detail page includes lead context, workflow status, internal notes, and copy/paste follow-up email templates for first reply, qualification questions, and the pilot package.
