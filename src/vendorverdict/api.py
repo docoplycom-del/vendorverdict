@@ -702,6 +702,11 @@ def create_app(
                 "pilot": pilot,
                 "lead": lead,
                 "tasks": pilots.list_tasks(pilot_id),
+                "reviews": pilots.list_reviews(pilot_id),
+                "review_count": pilots.review_count(pilot_id),
+                "review_values": _pilot_review_default_values(pilot),
+                "review_errors": [],
+                "draft_response": "",
                 "pilot_statuses": PILOT_STATUSES,
                 "pilot_packages": PILOT_PACKAGES,
                 "auth": _auth_context(request),
@@ -732,6 +737,116 @@ def create_app(
         updated = pilot_store().set_task_completed(pilot_id, task_key, completed)
         if not updated:
             raise HTTPException(status_code=404, detail=f"Pilot task not found: {pilot_id}/{task_key}")
+        return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
+
+    @app.get("/dashboard/pilots/{pilot_id}/reviews.csv")
+    def export_dashboard_pilot_reviews_csv(pilot_id: str) -> PlainTextResponse:
+        pilots = pilot_store()
+        if pilots.get_pilot(pilot_id) is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        csv_text = pilots.export_reviews_csv(pilot_id)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-pilot-reviews.csv"'},
+        )
+
+    @app.post("/dashboard/pilots/{pilot_id}/reviews/run", response_class=HTMLResponse)
+    async def run_dashboard_pilot_review(request: Request, pilot_id: str):
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+
+        form = _parse_urlencoded_form(await request.body())
+        query = _compose_dashboard_query(form)
+        values = _dashboard_values_from_form(form, query=query)
+        review_label = (form.get("label") or values.get("use_case") or "Pilot vendor review").strip()
+        use_live_evidence = form.get("live_evidence") in {"1", "true", "on", "yes"}
+        export_markdown = form.get("export_markdown") in {"1", "true", "on", "yes"}
+        export_pdf = form.get("export_pdf") in {"1", "true", "on", "yes"}
+
+        errors: list[str] = []
+        if len(query) < 5:
+            errors.append("Enter vendors and a use case before running a pilot review.")
+
+        if errors:
+            lead = lead_store().get_lead(pilot.lead_id) if pilot.lead_id else None
+            return TEMPLATES.TemplateResponse(
+                request,
+                "pilot_detail.html",
+                {
+                    "request": request,
+                    "pilot": pilot,
+                    "lead": lead,
+                    "tasks": pilots.list_tasks(pilot_id),
+                    "reviews": pilots.list_reviews(pilot_id),
+                    "review_count": pilots.review_count(pilot_id),
+                    "review_values": {**values, "label": review_label},
+                    "review_errors": errors,
+                    "draft_response": "",
+                    "pilot_statuses": PILOT_STATUSES,
+                    "pilot_packages": PILOT_PACKAGES,
+                    "auth": _auth_context(request),
+                },
+                status_code=400,
+            )
+
+        collector = EvidenceCollector(use_live_checks=use_live_evidence)
+        verdict = build_vendor_verdict(query, collector=collector)
+        report_text = render_verdict(verdict)
+
+        if verdict.request.missing_fields or verdict.recommendation is None:
+            lead = lead_store().get_lead(pilot.lead_id) if pilot.lead_id else None
+            return TEMPLATES.TemplateResponse(
+                request,
+                "pilot_detail.html",
+                {
+                    "request": request,
+                    "pilot": pilot,
+                    "lead": lead,
+                    "tasks": pilots.list_tasks(pilot_id),
+                    "reviews": pilots.list_reviews(pilot_id),
+                    "review_count": pilots.review_count(pilot_id),
+                    "review_values": {**values, "label": review_label},
+                    "review_errors": ["VendorVerdict needs clarification before it can save this pilot review."],
+                    "draft_response": report_text,
+                    "pilot_statuses": PILOT_STATUSES,
+                    "pilot_packages": PILOT_PACKAGES,
+                    "auth": _auth_context(request),
+                },
+                status_code=200,
+            )
+
+        report_store = store()
+        report_id = report_store.save_report(
+            verdict,
+            report_text,
+            raw_query=query,
+            metadata={
+                "client": "vendorverdict-pilot-workspace",
+                "pilot_id": pilot_id,
+                "pilot_company": pilot.company,
+                "pilot_review_label": review_label,
+                "live_evidence": use_live_evidence,
+                "dashboard_form": {
+                    "vendors": values.get("vendors", ""),
+                    "use_case": values.get("use_case", ""),
+                    "team_size": values.get("team_size", ""),
+                    "region": values.get("region", ""),
+                    "data_sensitivity": values.get("data_sensitivity", ""),
+                },
+            },
+        )
+        if export_markdown:
+            export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
+        if export_pdf:
+            export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+        pilots.link_report(pilot_id, report_id, label=review_label, status="completed")
+        if pilots.review_count(pilot_id) >= 1:
+            pilots.set_task_completed(pilot_id, "run_first_reports", True)
+        if export_markdown or export_pdf:
+            pilots.set_task_completed(pilot_id, "export_artifacts", True)
         return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
 
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)
@@ -817,6 +932,18 @@ def _auth_context(request: Request) -> dict[str, Any]:
         "is_authenticated": bool(username),
     }
 
+
+
+def _pilot_review_default_values(pilot: Any) -> dict[str, str]:
+    return {
+        "label": "First pilot review",
+        "vendors": "",
+        "use_case": pilot.objective or "",
+        "team_size": "",
+        "region": "UK",
+        "data_sensitivity": "medium",
+        "query": "",
+    }
 
 
 def _pilot_packages() -> list[dict[str, Any]]:

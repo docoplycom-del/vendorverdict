@@ -700,3 +700,18 @@ html body button.button:not(.secondary) {
     width: 100%;
   }
 }
+
+/* Pilot review delivery */
+.pilot-review-form {
+  margin-top: 1rem;
+}
+
+.pilot-review-table {
+  margin-top: 1.25rem;
+}
+
+.actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}

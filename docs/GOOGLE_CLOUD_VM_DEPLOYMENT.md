@@ -420,3 +420,7 @@ After deploying the lead follow-up workflow, open `/dashboard/leads` and click `
 ## Pilot onboarding workflow
 
 After deployment, pilot workspaces are available at `/dashboard/pilots`. See `docs/PILOT_ONBOARDING_WORKFLOW.md`.
+
+## Pilot review delivery
+
+After deployment, authenticated users can open `/dashboard/pilots`, select a pilot workspace, and run saved vendor reviews directly from that workspace. Each review is linked to the pilot, and Markdown/PDF exports are available from the linked report.

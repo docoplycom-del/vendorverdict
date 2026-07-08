@@ -18,7 +18,7 @@
   <div class="metric-grid pilot-metrics">
     <div class="metric"><strong>{{ pilot.progress_percent }}%</strong><span>checklist complete</span></div>
     <div class="metric"><strong>{{ pilot.completed_tasks }}/{{ pilot.total_tasks }}</strong><span>tasks complete</span></div>
-    <div class="metric"><strong>{{ pilot.review_target }}</strong><span>review target</span></div>
+    <div class="metric"><strong>{{ review_count }}/{{ pilot.review_target }}</strong><span>reviews run</span></div>
   </div>
 
   <div class="grid-two lead-detail-grid">
@@ -62,6 +62,91 @@
       </dl>
     </article>
   </div>
+</section>
+
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot reviews</p>
+      <h2>Run and track vendor reviews</h2>
+      <p class="muted">Create saved VendorVerdict reports directly from this pilot workspace and track delivery against the review target.</p>
+    </div>
+    <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/reviews.csv">Export reviews CSV</a>
+  </div>
+
+  {% if review_errors %}
+    <div class="error-list">
+      {% for error in review_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+  {% if draft_response %}
+    <pre class="report-text compact-report">{{ draft_response }}</pre>
+  {% endif %}
+
+  <form class="review-form pilot-review-form" method="post" action="/dashboard/pilots/{{ pilot.pilot_id }}/reviews/run">
+    <label for="pilot-review-label">Review label</label>
+    <input id="pilot-review-label" name="label" value="{{ review_values.label }}" placeholder="Example: CRM shortlist review">
+
+    <label for="pilot-review-vendors">Vendors</label>
+    <input id="pilot-review-vendors" name="vendors" value="{{ review_values.vendors }}" placeholder="Example: Notion, Airtable, Coda">
+
+    <label for="pilot-review-use-case">Use case</label>
+    <textarea id="pilot-review-use-case" name="use_case" rows="3" placeholder="Example: storing client project data for a consulting team">{{ review_values.use_case }}</textarea>
+
+    <div class="form-grid">
+      <div>
+        <label for="pilot-review-team-size">Team size</label>
+        <input id="pilot-review-team-size" name="team_size" value="{{ review_values.team_size }}" placeholder="10">
+      </div>
+      <div>
+        <label for="pilot-review-region">Region</label>
+        <input id="pilot-review-region" name="region" value="{{ review_values.region }}" placeholder="UK">
+      </div>
+      <div>
+        <label for="pilot-review-data">Data sensitivity</label>
+        <select id="pilot-review-data" name="data_sensitivity">
+          {% for option in ['', 'low', 'medium', 'medium-high', 'high'] %}
+            <option value="{{ option }}" {% if review_values.data_sensitivity == option %}selected{% endif %}>{{ option or 'not specified' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <label for="pilot-review-query">Or write a full review request</label>
+    <textarea id="pilot-review-query" name="query" rows="4" placeholder="Optional: paste a complete review prompt.">{{ review_values.query }}</textarea>
+
+    <label class="checkbox-row"><input type="checkbox" name="live_evidence" value="1"> Run live official-source checks</label>
+    <label class="checkbox-row"><input type="checkbox" name="export_markdown" value="1" checked> Export Markdown</label>
+    <label class="checkbox-row"><input type="checkbox" name="export_pdf" value="1" checked> Export PDF</label>
+
+    <button class="button" type="submit">Run pilot review</button>
+  </form>
+
+  {% if reviews %}
+    <div class="table-wrap pilot-review-table">
+      <table>
+        <thead><tr><th>Created</th><th>Label</th><th>Use case</th><th>Recommendation</th><th>Confidence</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for review in reviews %}
+            <tr>
+              <td>{{ review.created_at[:19].replace('T', ' ') }}</td>
+              <td><strong>{{ review.label }}</strong><br><small class="muted">{{ review.status }}</small></td>
+              <td>{{ review.use_case or '—' }}{% if review.vendors %}<br><small class="muted">{{ review.vendors | join(', ') }}</small>{% endif %}</td>
+              <td>{{ review.recommended_vendor or '—' }}</td>
+              <td>{{ review.overall_confidence or '—' }}</td>
+              <td class="actions-cell">
+                <a class="button secondary small-button" href="/dashboard/reports/{{ review.report_id }}">View report</a>
+                <a class="button secondary small-button" href="/reports/{{ review.report_id }}/pdf">PDF</a>
+                <a class="button secondary small-button" href="/reports/{{ review.report_id }}/markdown">Markdown</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No pilot reviews have been run yet.</p>
+  {% endif %}
 </section>
 
 <section class="card">

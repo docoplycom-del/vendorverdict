@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 import sqlite3
 from contextlib import closing
@@ -111,6 +112,46 @@ class PilotTask:
         }
         return mapping[key]
 
+
+
+
+@dataclass(frozen=True)
+class PilotReview:
+    pilot_id: str
+    report_id: str
+    created_at: str
+    label: str
+    status: str
+    notes: str
+    raw_query: str = ""
+    vendors: tuple[str, ...] = ()
+    use_case: str = ""
+    recommended_vendor: str = ""
+    overall_confidence: str = ""
+
+    def __getitem__(self, key: str) -> Any:
+        mapping = {
+            "pilot_id": self.pilot_id,
+            "report_id": self.report_id,
+            "created_at": self.created_at,
+            "label": self.label,
+            "status": self.status,
+            "notes": self.notes,
+            "raw_query": self.raw_query,
+            "vendors": self.vendors,
+            "use_case": self.use_case,
+            "recommended_vendor": self.recommended_vendor,
+            "recommendation": self.recommended_vendor,
+            "overall_confidence": self.overall_confidence,
+            "confidence": self.overall_confidence,
+        }
+        return mapping[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
 class PilotStore:
     """SQLite-backed pilot onboarding tracker."""
@@ -316,6 +357,95 @@ class PilotStore:
             conn.commit()
             return cursor.rowcount > 0
 
+    def link_report(
+        self,
+        pilot_id: str,
+        report_id: str,
+        *,
+        label: str = "",
+        status: str = "completed",
+        notes: str = "",
+    ) -> bool:
+        if self.get_pilot(pilot_id) is None:
+            return False
+        created_at = datetime.now(UTC).isoformat()
+        safe_label = (label or "Pilot vendor review").strip()
+        safe_status = (status or "completed").strip().lower().replace(" ", "_")
+        with closing(self._connect()) as conn:
+            conn.execute(
+                """
+                INSERT INTO pilot_reviews (pilot_id, report_id, created_at, label, status, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(pilot_id, report_id) DO UPDATE SET
+                    label = excluded.label,
+                    status = excluded.status,
+                    notes = excluded.notes
+                """,
+                (pilot_id, report_id, created_at, safe_label, safe_status, notes.strip()),
+            )
+            conn.commit()
+        return True
+
+    def list_reviews(self, pilot_id: str) -> list[PilotReview]:
+        with closing(self._connect()) as conn:
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT pr.pilot_id, pr.report_id, pr.created_at, pr.label, pr.status, pr.notes,
+                           r.raw_query, r.vendors_json, r.use_case, r.recommended_vendor, r.overall_confidence
+                    FROM pilot_reviews pr
+                    LEFT JOIN reports r ON r.id = pr.report_id
+                    WHERE pr.pilot_id = ?
+                    ORDER BY pr.created_at DESC
+                    """,
+                    (pilot_id,),
+                ).fetchall()
+            except sqlite3.OperationalError as exc:
+                if "no such table: reports" not in str(exc):
+                    raise
+                rows = conn.execute(
+                    """
+                    SELECT pilot_id, report_id, created_at, label, status, notes,
+                           '' AS raw_query, '[]' AS vendors_json, '' AS use_case,
+                           '' AS recommended_vendor, '' AS overall_confidence
+                    FROM pilot_reviews
+                    WHERE pilot_id = ?
+                    ORDER BY created_at DESC
+                    """,
+                    (pilot_id,),
+                ).fetchall()
+        return [self._row_to_review(row) for row in rows]
+
+    def review_count(self, pilot_id: str) -> int:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM pilot_reviews WHERE pilot_id = ?",
+                (pilot_id,),
+            ).fetchone()
+        return int(row["count"] or 0) if row is not None else 0
+
+    def export_reviews_csv(self, pilot_id: str) -> str:
+        reviews = self.list_reviews(pilot_id)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "created_at", "label", "status", "report_id", "vendors", "use_case",
+            "recommended_vendor", "confidence", "notes",
+        ])
+        for review in reviews:
+            writer.writerow([
+                review.created_at,
+                review.label,
+                review.status,
+                review.report_id,
+                ", ".join(review.vendors),
+                review.use_case,
+                review.recommended_vendor,
+                review.overall_confidence,
+                review.notes,
+            ])
+        return output.getvalue()
+
     def status_counts(self) -> dict[str, int]:
         counts = {status: 0 for status in PILOT_STATUSES}
         with closing(self._connect()) as conn:
@@ -370,9 +500,21 @@ class PilotStore:
                     PRIMARY KEY (pilot_id, task_key)
                 );
 
+                CREATE TABLE IF NOT EXISTS pilot_reviews (
+                    pilot_id TEXT NOT NULL,
+                    report_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    label TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'completed',
+                    notes TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (pilot_id, report_id)
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_pilots_created_at ON pilots(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_pilots_lead_id ON pilots(lead_id);
                 CREATE INDEX IF NOT EXISTS idx_pilots_status ON pilots(status);
+                CREATE INDEX IF NOT EXISTS idx_pilot_reviews_pilot_id ON pilot_reviews(pilot_id);
+                CREATE INDEX IF NOT EXISTS idx_pilot_reviews_report_id ON pilot_reviews(report_id);
                 """
             )
             conn.commit()
@@ -381,6 +523,29 @@ class PilotStore:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    @staticmethod
+    def _row_to_review(row: sqlite3.Row) -> PilotReview:
+        vendors: tuple[str, ...] = ()
+        vendors_json = row["vendors_json"] if "vendors_json" in row.keys() else None
+        if vendors_json:
+            try:
+                vendors = tuple(json.loads(vendors_json))
+            except (TypeError, ValueError):
+                vendors = ()
+        return PilotReview(
+            pilot_id=row["pilot_id"],
+            report_id=row["report_id"],
+            created_at=row["created_at"],
+            label=row["label"] or "Pilot vendor review",
+            status=row["status"] or "completed",
+            notes=row["notes"] or "",
+            raw_query=row["raw_query"] or "",
+            vendors=vendors,
+            use_case=row["use_case"] or "",
+            recommended_vendor=row["recommended_vendor"] or "",
+            overall_confidence=row["overall_confidence"] or "",
+        )
 
     @staticmethod
     def _row_to_record(row: sqlite3.Row | None) -> PilotRecord:

@@ -237,6 +237,36 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Pilot Co", pilot.text)
         self.assertIn("Onboarding checklist", pilot.text)
         self.assertIn("Book pilot scope call", pilot.text)
+        self.assertIn("Run and track vendor reviews", pilot.text)
+
+        run_review = self.client.post(
+            convert.headers["location"] + "/reviews/run",
+            data={
+                "label": "Client data shortlist",
+                "vendors": "Notion, Airtable",
+                "use_case": "client delivery records",
+                "team_size": "10",
+                "region": "UK",
+                "data_sensitivity": "medium",
+                "export_markdown": "1",
+                "export_pdf": "1",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(run_review.status_code, 303)
+        self.assertEqual(run_review.headers["location"], convert.headers["location"])
+
+        pilot_with_review = self.client.get(convert.headers["location"])
+        self.assertEqual(pilot_with_review.status_code, 200)
+        self.assertIn("Client data shortlist", pilot_with_review.text)
+        self.assertIn("View report", pilot_with_review.text)
+        self.assertIn("PDF", pilot_with_review.text)
+        self.assertIn("1/20", pilot_with_review.text)
+
+        reviews_csv = self.client.get(convert.headers["location"] + "/reviews.csv")
+        self.assertEqual(reviews_csv.status_code, 200)
+        self.assertIn("text/csv", reviews_csv.headers["content-type"])
+        self.assertIn("Client data shortlist", reviews_csv.text)
 
         task_update = self.client.post(
             convert.headers["location"] + "/tasks/scope_call",
