@@ -16,6 +16,7 @@ from vendorverdict.proposals import (
     normalize_proposal_status,
     customer_next_step,
     customer_success_criteria,
+    normalize_payment_status,
     render_proposal_markdown,
 )
 from vendorverdict.storage import ReportStore
@@ -40,6 +41,8 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertEqual(normalize_proposal_status("bad"), "draft")
         self.assertEqual(normalize_proposal_package("Team"), "team")
         self.assertEqual(normalize_proposal_package("bad"), "starter")
+        self.assertEqual(normalize_payment_status("Invoice Sent"), "invoice_sent")
+        self.assertEqual(normalize_payment_status("bad"), "not_requested")
 
         lead_id = self.leads.save_lead(
             name="Morgan Buyer",
@@ -76,6 +79,8 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertEqual(proposal.follow_up_due, "")
         self.assertEqual(proposal.last_follow_up_at, "")
         self.assertEqual(proposal.delivery_label, "not sent")
+        self.assertEqual(proposal.payment_status, "not_requested")
+        self.assertEqual(proposal.payment_label, "not requested")
         self.assertIn("£1,000", proposal.proposed_price)
         self.assertNotIn("1/2 reviews", proposal.success_criteria)
         self.assertIn("up to 2 recurring SaaS review decisions", proposal.success_criteria)
@@ -120,16 +125,41 @@ class CommercialProposalTests(unittest.TestCase):
         delivery_counts = self.proposals.delivery_counts()
         self.assertEqual(delivery_counts["sent"], 1)
 
-        email = build_proposal_email(followed)
+        self.assertTrue(
+            self.proposals.mark_invoice_sent(
+                proposal_id,
+                payment_due="2026-07-30",
+                payment_url="https://pay.example.com/vendorverdict",
+                invoice_reference="INV-VV-001",
+            )
+        )
+        invoiced = self.proposals.get_proposal(proposal_id)
+        self.assertIsNotNone(invoiced)
+        self.assertEqual(invoiced.payment_status, "invoice_sent")
+        self.assertEqual(invoiced.payment_due, "2026-07-30")
+        self.assertIn("INV-VV-001", invoiced.payment_label)
+        self.assertIn("due 2026-07-30", invoiced.payment_label)
+        self.assertEqual(self.proposals.payment_counts()["invoice_sent"], 1)
+
+        self.assertTrue(self.proposals.mark_paid(proposal_id))
+        paid = self.proposals.get_proposal(proposal_id)
+        self.assertIsNotNone(paid)
+        self.assertEqual(paid.payment_status, "paid")
+        self.assertTrue(paid.paid_at)
+        self.assertIn("paid", paid.payment_label)
+
+        email = build_proposal_email(paid)
         self.assertIn("VendorVerdict next step", email.subject)
         self.assertIn("£1,250/month", email.body)
         mailto = build_proposal_mailto(followed)
         self.assertIn("mailto:morgan%40example.com", mailto)
         self.assertIn("VendorVerdict%20next%20step", mailto)
 
-        markdown = render_proposal_markdown(followed)
+        markdown = render_proposal_markdown(paid)
         self.assertIn("VendorVerdict proposal", markdown)
         self.assertIn("Recurring vendor reviews", markdown)
+        self.assertIn("Payment link", markdown)
+        self.assertIn("https://pay.example.com/vendorverdict", markdown)
         self.assertNotIn("Follow-up email draft", markdown)
         self.assertNotIn("Internal notes", markdown)
 
@@ -153,7 +183,9 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertIn("Proposal Co", csv_text)
         self.assertIn("£1,250/month", csv_text)
         self.assertIn("sent_at,follow_up_due,last_follow_up_at", csv_text)
+        self.assertIn("payment_status,payment_due,payment_url,invoice_reference,paid_at", csv_text)
         self.assertIn("2026-07-22", csv_text)
+        self.assertIn("INV-VV-001", csv_text)
 
 
 if __name__ == "__main__":

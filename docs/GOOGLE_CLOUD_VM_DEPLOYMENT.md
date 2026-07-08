@@ -504,3 +504,8 @@ sudo bash -lc 'set -a; source /etc/vendorverdict/vendorverdict.env; set +a; echo
 ```
 
 Then run the safe deploy script. See `docs/PROPOSAL_EMAIL_SENDING.md`.
+
+
+## Payment tracking defaults
+
+The admin settings page can set non-secret payment defaults such as `VENDORVERDICT_DEFAULT_PAYMENT_DUE_DAYS` and `VENDORVERDICT_DEFAULT_PAYMENT_URL`. Keep payment-provider secrets outside the dashboard and store them only in `/etc/vendorverdict/vendorverdict.env` if needed.

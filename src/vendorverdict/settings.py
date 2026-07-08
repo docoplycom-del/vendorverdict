@@ -54,6 +54,18 @@ SETTING_DEFINITIONS: dict[str, dict[str, str]] = {
         "env": "VENDORVERDICT_DEFAULT_FOLLOW_UP_DAYS",
         "default": "7",
     },
+    "default_payment_due_days": {
+        "label": "Default payment due days",
+        "description": "Number of days after sending an invoice/payment link before payment is due.",
+        "env": "VENDORVERDICT_DEFAULT_PAYMENT_DUE_DAYS",
+        "default": "14",
+    },
+    "default_payment_url": {
+        "label": "Default payment link",
+        "description": "Optional reusable payment or checkout link shown on proposal payment tracking forms.",
+        "env": "VENDORVERDICT_DEFAULT_PAYMENT_URL",
+        "default": "",
+    },
     "operator_email": {
         "label": "Operator email",
         "description": "Internal contact shown on the settings page for admin reference.",
@@ -72,6 +84,8 @@ class AppSettings:
     default_proposal_price: str
     default_proposal_billing: str
     default_follow_up_days: str
+    default_payment_due_days: str
+    default_payment_url: str
     operator_email: str
     updated_at: str = ""
 
@@ -87,6 +101,8 @@ class AppSettings:
             "default_proposal_price": self.default_proposal_price,
             "default_proposal_billing": self.default_proposal_billing,
             "default_follow_up_days": self.default_follow_up_days,
+            "default_payment_due_days": self.default_payment_due_days,
+            "default_payment_url": self.default_payment_url,
             "operator_email": self.operator_email,
             "updated_at": self.updated_at,
         }
@@ -97,6 +113,14 @@ class AppSettings:
             value = int(str(self.default_follow_up_days).strip())
         except ValueError:
             return 7
+        return max(0, min(value, 90))
+
+    @property
+    def payment_due_days_int(self) -> int:
+        try:
+            value = int(str(self.default_payment_due_days).strip())
+        except ValueError:
+            return 14
         return max(0, min(value, 90))
 
 
@@ -178,12 +202,15 @@ class SettingsStore:
             value = str(value or "").strip()
             if key == "public_url":
                 value = value.rstrip("/")
-            if key == "default_follow_up_days":
+            if key in {"default_follow_up_days", "default_payment_due_days"}:
+                fallback = 7 if key == "default_follow_up_days" else 14
                 try:
                     days = int(value)
                 except ValueError:
-                    days = 7
+                    days = fallback
                 value = str(max(0, min(days, 90)))
+            if key == "default_payment_url":
+                value = value.strip()
             cleaned[key] = value
         return cleaned
 

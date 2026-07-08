@@ -297,6 +297,8 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Open proposal email", proposal_detail.text)
         self.assertIn("Direct email sending", proposal_detail.text)
         self.assertIn("SMTP sending is not configured yet", proposal_detail.text)
+        self.assertIn("Payment tracking", proposal_detail.text)
+        self.assertIn("Mark invoice/payment link sent", proposal_detail.text)
 
         proposal_update = self.client.post(
             proposal_create.headers["location"] + "/update",
@@ -344,10 +346,37 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("follow-up due 2026-07-15", delivered_proposal.text)
         self.assertIn("Mark followed up", delivered_proposal.text)
 
+        payment_update = self.client.post(
+            proposal_create.headers["location"] + "/payment",
+            data={
+                "action": "mark_invoice_sent",
+                "payment_due": "2026-07-30",
+                "invoice_reference": "INV-VV-001",
+                "payment_url": "https://pay.example.com/vendorverdict",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(payment_update.status_code, 303)
+        self.assertEqual(payment_update.headers["location"], proposal_create.headers["location"])
+
+        payment_page = self.client.get(proposal_create.headers["location"])
+        self.assertEqual(payment_page.status_code, 200)
+        self.assertIn("invoice sent", payment_page.text)
+        self.assertIn("INV-VV-001", payment_page.text)
+        self.assertIn("https://pay.example.com/vendorverdict", payment_page.text)
+
+        paid_update = self.client.post(
+            proposal_create.headers["location"] + "/payment",
+            data={"action": "mark_paid"},
+            follow_redirects=False,
+        )
+        self.assertEqual(paid_update.status_code, 303)
+
         proposal_md = self.client.get(proposal_create.headers["location"] + ".md")
         self.assertEqual(proposal_md.status_code, 200)
         self.assertIn("text/markdown", proposal_md.headers["content-type"])
         self.assertIn("VendorVerdict proposal", proposal_md.text)
+        self.assertIn("Payment link", proposal_md.text)
 
         proposal_pdf = self.client.get(proposal_create.headers["location"] + ".pdf")
         self.assertEqual(proposal_pdf.status_code, 200)
@@ -360,12 +389,16 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Open proposal", proposals.text)
         self.assertIn("PDF", proposals.text)
         self.assertIn("follow-up due", proposals.text)
+        self.assertIn("Payment:", proposals.text)
+        self.assertIn("paid", proposals.text)
 
         proposals_csv = self.client.get("/dashboard/proposals.csv")
         self.assertEqual(proposals_csv.status_code, 200)
         self.assertIn("text/csv", proposals_csv.headers["content-type"])
         self.assertIn("Pilot Co", proposals_csv.text)
         self.assertIn("follow_up_due", proposals_csv.text)
+        self.assertIn("payment_status", proposals_csv.text)
+        self.assertIn("INV-VV-001", proposals_csv.text)
         self.assertIn("2026-07-15", proposals_csv.text)
 
         complete = self.client.post(convert.headers["location"] + "/complete", follow_redirects=False)
@@ -501,7 +534,7 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-proposal-email-sending", template)
+        self.assertIn("style.css?v=20260708-payment-tracking", template)
 
 class PilotReadinessTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -541,4 +574,4 @@ class PilotReadinessTests(unittest.TestCase):
 
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
         self.assertIn('/dashboard/readiness', template)
-        self.assertIn('style.css?v=20260708-proposal-email-sending', template)
+        self.assertIn('style.css?v=20260708-payment-tracking', template)

@@ -25,6 +25,8 @@ class AdminSettingsTests(unittest.TestCase):
             "VENDORVERDICT_DEFAULT_PROPOSAL_PRICE",
             "VENDORVERDICT_DEFAULT_PROPOSAL_BILLING",
             "VENDORVERDICT_DEFAULT_FOLLOW_UP_DAYS",
+            "VENDORVERDICT_DEFAULT_PAYMENT_DUE_DAYS",
+            "VENDORVERDICT_DEFAULT_PAYMENT_URL",
         ]}
         os.environ["VENDORVERDICT_API_DB_PATH"] = os.path.join(self.tmp.name, "settings.sqlite3")
         os.environ["VENDORVERDICT_API_EXPORT_DIR"] = os.path.join(self.tmp.name, "reports")
@@ -44,6 +46,7 @@ class AdminSettingsTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("VendorVerdict settings", response.text)
         self.assertIn("Default proposal price", response.text)
+        self.assertIn("Default payment due days", response.text)
         self.assertIn("Secrets stay outside the dashboard", response.text)
 
         invalid = self.client.post(
@@ -56,6 +59,8 @@ class AdminSettingsTests(unittest.TestCase):
                 "default_proposal_price": "From £1,000/month after pilot",
                 "default_proposal_billing": "Monthly subscription.",
                 "default_follow_up_days": "7",
+                "default_payment_due_days": "14",
+                "default_payment_url": "https://pay.example.com/vendorverdict",
                 "operator_email": "",
             },
         )
@@ -73,6 +78,8 @@ class AdminSettingsTests(unittest.TestCase):
                 "default_proposal_price": "From £2,000/month after pilot",
                 "default_proposal_billing": "Quarterly subscription after the paid pilot.",
                 "default_follow_up_days": "5",
+                "default_payment_due_days": "10",
+                "default_payment_url": "https://pay.example.com/default",
                 "operator_email": "ops@example.com",
             },
             follow_redirects=False,
@@ -112,6 +119,7 @@ class AdminSettingsTests(unittest.TestCase):
         self.assertEqual(proposal_page.status_code, 200)
         self.assertIn("From £2,000/month after pilot", proposal_page.text)
         self.assertIn("Quarterly subscription after the paid pilot.", proposal_page.text)
+        self.assertIn("https://pay.example.com/default", proposal_page.text)
 
         mark_sent = self.client.post(
             f"{proposal.headers['location']}/delivery",
@@ -127,9 +135,11 @@ class AdminSettingsTests(unittest.TestCase):
         os.environ["VENDORVERDICT_DEFAULT_REVIEW_REGION"] = "US"
         store = SettingsStore(os.environ["VENDORVERDICT_API_DB_PATH"])
         self.assertEqual(store.get_settings().default_review_region, "US")
-        store.update_settings({"default_review_region": "UK", "default_follow_up_days": "14"})
+        store.update_settings({"default_review_region": "UK", "default_follow_up_days": "14", "default_payment_due_days": "21", "default_payment_url": "https://pay.example.com/default"})
         self.assertEqual(store.get_settings().default_review_region, "UK")
         self.assertEqual(store.get_settings().follow_up_days_int, 14)
+        self.assertEqual(store.get_settings().payment_due_days_int, 21)
+        self.assertEqual(store.get_settings().default_payment_url, "https://pay.example.com/default")
         store.reset_settings()
         self.assertEqual(store.get_settings().default_review_region, "US")
 

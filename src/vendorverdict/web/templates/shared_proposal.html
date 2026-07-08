@@ -16,6 +16,9 @@
         <tr><th>Package</th><td>{{ proposal.package_label }}</td></tr>
         <tr><th>Proposed price</th><td>{{ proposal.proposed_price or 'To be agreed' }}</td></tr>
         <tr><th>Billing</th><td>{{ proposal.billing or 'To be agreed' }}</td></tr>
+        {% if proposal.invoice_reference %}<tr><th>Invoice reference</th><td>{{ proposal.invoice_reference }}</td></tr>{% endif %}
+        {% if proposal.payment_due %}<tr><th>Payment due</th><td>{{ proposal.payment_due }}</td></tr>{% endif %}
+        {% if proposal.payment_url %}<tr><th>Payment link</th><td><a href="{{ proposal.payment_url }}" target="_blank" rel="noreferrer">Open payment link</a></td></tr>{% endif %}
       </tbody>
     </table>
   </div>

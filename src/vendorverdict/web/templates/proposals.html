@@ -21,6 +21,12 @@
   </div>
 
   <div class="metric-grid lead-status-grid delivery-grid">
+    <div class="metric small-metric"><strong>{{ payment_counts.get('invoice_sent', 0) }}</strong><span>invoice sent</span></div>
+    <div class="metric small-metric"><strong>{{ payment_counts.get('paid', 0) }}</strong><span>paid</span></div>
+    <div class="metric small-metric"><strong>{{ payment_counts.get('overdue', 0) }}</strong><span>payment overdue</span></div>
+  </div>
+
+  <div class="metric-grid lead-status-grid delivery-grid">
     <div class="metric small-metric"><strong>{{ delivery_counts.get('not_sent', 0) }}</strong><span>not sent</span></div>
     <div class="metric small-metric"><strong>{{ delivery_counts.get('sent', 0) }}</strong><span>sent / active</span></div>
     <div class="metric small-metric"><strong>{{ delivery_counts.get('follow_up_due', 0) }}</strong><span>follow-up due</span></div>
@@ -38,10 +44,12 @@
             <p>{{ proposal.proposed_price }}</p>
             <p class="muted">Contact: {{ proposal.contact_name }} · {{ proposal.contact_email }}</p>
             <p class="muted">Delivery: {{ proposal.delivery_label }}</p>
+            <p class="muted">Payment: {{ proposal.payment_label }}</p>
           </div>
           <div class="report-actions">
             <span class="pill highlight">{{ proposal.status }}</span>
             {% if proposal.is_follow_up_due %}<span class="pill warning">follow-up due</span>{% endif %}
+            {% if proposal.is_payment_overdue %}<span class="pill warning">payment overdue</span>{% endif %}
             <span class="pill">{{ proposal.package }}</span>
             <a class="button secondary small-button" href="/dashboard/pilots/{{ proposal.pilot_id }}/outcome">Outcome</a>
             <a class="button secondary small-button" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Customer PDF</a>

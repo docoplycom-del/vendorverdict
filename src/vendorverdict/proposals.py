@@ -19,6 +19,7 @@ from vendorverdict.storage import default_db_path
 
 PROPOSAL_STATUSES = ("draft", "sent", "negotiation", "accepted", "lost")
 PROPOSAL_PACKAGES = ("starter", "team", "advisor", "custom")
+PAYMENT_STATUSES = ("not_requested", "invoice_sent", "paid", "overdue", "waived")
 
 
 PACKAGE_DEFAULTS: dict[str, dict[str, str]] = {
@@ -59,6 +60,11 @@ def normalize_proposal_package(value: str) -> str:
     return normalized if normalized in PROPOSAL_PACKAGES else "starter"
 
 
+def normalize_payment_status(value: str) -> str:
+    normalized = (value or "").strip().lower().replace(" ", "_").replace("-", "_")
+    return normalized if normalized in PAYMENT_STATUSES else "not_requested"
+
+
 def package_from_pilot(pilot_package: str) -> str:
     package = (pilot_package or "").strip().lower()
     if package == "team":
@@ -88,6 +94,11 @@ class ProposalRecord:
     sent_at: str = ""
     follow_up_due: str = ""
     last_follow_up_at: str = ""
+    payment_status: str = "not_requested"
+    payment_due: str = ""
+    payment_url: str = ""
+    invoice_reference: str = ""
+    paid_at: str = ""
 
     def __getitem__(self, key: str) -> Any:
         mapping = {
@@ -110,9 +121,16 @@ class ProposalRecord:
             "sent_at": self.sent_at,
             "follow_up_due": self.follow_up_due,
             "last_follow_up_at": self.last_follow_up_at,
+            "payment_status": self.payment_status,
+            "payment_due": self.payment_due,
+            "payment_url": self.payment_url,
+            "invoice_reference": self.invoice_reference,
+            "paid_at": self.paid_at,
             "package_label": self.package_label,
             "delivery_label": self.delivery_label,
             "is_follow_up_due": self.is_follow_up_due,
+            "payment_label": self.payment_label,
+            "is_payment_overdue": self.is_payment_overdue,
         }
         return mapping[key]
 
@@ -144,6 +162,26 @@ class ProposalRecord:
             return False
         today = datetime.now(UTC).date().isoformat()
         return self.follow_up_due <= today
+
+    @property
+    def payment_label(self) -> str:
+        status = normalize_payment_status(self.payment_status).replace("_", " ")
+        if self.payment_status == "paid" and self.paid_at:
+            return f"paid {self.paid_at[:10]}"
+        if self.invoice_reference and self.payment_due:
+            return f"{status} · {self.invoice_reference} · due {self.payment_due}"
+        if self.invoice_reference:
+            return f"{status} · {self.invoice_reference}"
+        if self.payment_due:
+            return f"{status} · due {self.payment_due}"
+        return status
+
+    @property
+    def is_payment_overdue(self) -> bool:
+        if self.payment_status in {"paid", "waived"} or not self.payment_due:
+            return False
+        today = datetime.now(UTC).date().isoformat()
+        return self.payment_due < today
 
 
 @dataclass(frozen=True)
@@ -182,8 +220,9 @@ class ProposalStore:
                 INSERT INTO proposals (
                     id, created_at, updated_at, pilot_id, company, contact_name, contact_email,
                     package, status, proposed_price, billing, scope, success_criteria, next_step, notes,
-                    sent_at, follow_up_due, last_follow_up_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sent_at, follow_up_due, last_follow_up_at, payment_status, payment_due, payment_url,
+                    invoice_reference, paid_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     proposal_id,
@@ -200,6 +239,11 @@ class ProposalStore:
                     defaults["scope"],
                     success_criteria,
                     next_step,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "not_requested",
                     "",
                     "",
                     "",
@@ -310,6 +354,74 @@ class ProposalStore:
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_payment(
+        self,
+        proposal_id: str,
+        *,
+        payment_status: str,
+        payment_due: str = "",
+        payment_url: str = "",
+        invoice_reference: str = "",
+    ) -> bool:
+        now = datetime.now(UTC).isoformat()
+        safe_status = normalize_payment_status(payment_status)
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE proposals
+                SET updated_at = ?, payment_status = ?, payment_due = ?, payment_url = ?, invoice_reference = ?
+                WHERE id = ?
+                """,
+                (now, safe_status, _date_value(payment_due), payment_url.strip(), invoice_reference.strip(), proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def mark_invoice_sent(
+        self,
+        proposal_id: str,
+        *,
+        payment_due: str = "",
+        payment_url: str = "",
+        invoice_reference: str = "",
+    ) -> bool:
+        now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE proposals
+                SET updated_at = ?, payment_status = 'invoice_sent', payment_due = ?,
+                    payment_url = ?, invoice_reference = ?
+                WHERE id = ?
+                """,
+                (now, _date_value(payment_due), payment_url.strip(), invoice_reference.strip(), proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def mark_paid(self, proposal_id: str) -> bool:
+        now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE proposals
+                SET updated_at = ?, payment_status = 'paid', paid_at = ?
+                WHERE id = ?
+                """,
+                (now, now, proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def payment_counts(self) -> dict[str, int]:
+        counts = {status: 0 for status in PAYMENT_STATUSES}
+        counts["overdue"] = 0
+        for proposal in self.list_proposals(limit=2000):
+            counts[normalize_payment_status(proposal.payment_status)] += 1
+            if proposal.is_payment_overdue:
+                counts["overdue"] += 1
+        return counts
+
     def delivery_counts(self) -> dict[str, int]:
         counts = {"not_sent": 0, "sent": 0, "follow_up_due": 0, "accepted": 0, "lost": 0}
         for proposal in self.list_proposals(limit=2000):
@@ -340,6 +452,7 @@ class ProposalStore:
             "created_at", "updated_at", "company", "contact_name", "contact_email", "pilot_id",
             "package", "status", "proposed_price", "billing", "scope", "success_criteria",
             "next_step", "notes", "sent_at", "follow_up_due", "last_follow_up_at",
+            "payment_status", "payment_due", "payment_url", "invoice_reference", "paid_at",
         ])
         for proposal in self.list_proposals(limit=limit):
             writer.writerow([
@@ -360,6 +473,11 @@ class ProposalStore:
                 proposal.sent_at,
                 proposal.follow_up_due,
                 proposal.last_follow_up_at,
+                proposal.payment_status,
+                proposal.payment_due,
+                proposal.payment_url,
+                proposal.invoice_reference,
+                proposal.paid_at,
             ])
         return output.getvalue()
 
@@ -385,7 +503,12 @@ class ProposalStore:
                     notes TEXT NOT NULL DEFAULT '',
                     sent_at TEXT NOT NULL DEFAULT '',
                     follow_up_due TEXT NOT NULL DEFAULT '',
-                    last_follow_up_at TEXT NOT NULL DEFAULT ''
+                    last_follow_up_at TEXT NOT NULL DEFAULT '',
+                    payment_status TEXT NOT NULL DEFAULT 'not_requested',
+                    payment_due TEXT NOT NULL DEFAULT '',
+                    payment_url TEXT NOT NULL DEFAULT '',
+                    invoice_reference TEXT NOT NULL DEFAULT '',
+                    paid_at TEXT NOT NULL DEFAULT ''
                 );
                 CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON proposals(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_proposals_pilot_id ON proposals(pilot_id);
@@ -397,6 +520,11 @@ class ProposalStore:
                 "sent_at": "ALTER TABLE proposals ADD COLUMN sent_at TEXT NOT NULL DEFAULT ''",
                 "follow_up_due": "ALTER TABLE proposals ADD COLUMN follow_up_due TEXT NOT NULL DEFAULT ''",
                 "last_follow_up_at": "ALTER TABLE proposals ADD COLUMN last_follow_up_at TEXT NOT NULL DEFAULT ''",
+                "payment_status": "ALTER TABLE proposals ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'not_requested'",
+                "payment_due": "ALTER TABLE proposals ADD COLUMN payment_due TEXT NOT NULL DEFAULT ''",
+                "payment_url": "ALTER TABLE proposals ADD COLUMN payment_url TEXT NOT NULL DEFAULT ''",
+                "invoice_reference": "ALTER TABLE proposals ADD COLUMN invoice_reference TEXT NOT NULL DEFAULT ''",
+                "paid_at": "ALTER TABLE proposals ADD COLUMN paid_at TEXT NOT NULL DEFAULT ''",
             }
             for column, statement in migrations.items():
                 if column not in existing_columns:
@@ -429,6 +557,11 @@ class ProposalStore:
             sent_at=row["sent_at"] or "",
             follow_up_due=row["follow_up_due"] or "",
             last_follow_up_at=row["last_follow_up_at"] or "",
+            payment_status=normalize_payment_status(row["payment_status"] or "not_requested"),
+            payment_due=row["payment_due"] or "",
+            payment_url=row["payment_url"] or "",
+            invoice_reference=row["invoice_reference"] or "",
+            paid_at=row["paid_at"] or "",
         )
 
 
@@ -464,11 +597,25 @@ def build_proposal_email(proposal: ProposalRecord) -> ProposalEmail:
         f"Proposed scope:\n{proposal.scope}\n\n"
         f"Success criteria:\n{proposal.success_criteria}\n\n"
         f"Suggested next step:\n{proposal.next_step}\n\n"
+        f"{_payment_email_block(proposal)}"
         "Would it be useful to discuss this and decide whether VendorVerdict should continue as a recurring vendor-review workflow for your team?\n\n"
         "Best,\n"
         "Vladimir"
     )
     return ProposalEmail(subject=subject, body=body)
+
+
+def _payment_email_block(proposal: ProposalRecord) -> str:
+    if not proposal.payment_url and not proposal.invoice_reference and not proposal.payment_due:
+        return ""
+    lines = ["Payment / invoice details:"]
+    if proposal.invoice_reference:
+        lines.append(f"Invoice reference: {proposal.invoice_reference}")
+    if proposal.payment_due:
+        lines.append(f"Payment due: {proposal.payment_due}")
+    if proposal.payment_url:
+        lines.append(f"Payment link: {proposal.payment_url}")
+    return "\n".join(lines) + "\n\n"
 
 
 def build_proposal_mailto(proposal: ProposalRecord) -> str:
@@ -477,6 +624,17 @@ def build_proposal_mailto(proposal: ProposalRecord) -> str:
     subject = quote(email.subject)
     body = quote(email.body)
     return f"mailto:{recipient}?subject={subject}&body={body}"
+
+
+def _payment_markdown_lines(proposal: ProposalRecord) -> list[str]:
+    lines: list[str] = []
+    if proposal.invoice_reference:
+        lines.append(f"- Invoice reference: {proposal.invoice_reference}")
+    if proposal.payment_due:
+        lines.append(f"- Payment due: {proposal.payment_due}")
+    if proposal.payment_url:
+        lines.append(f"- Payment link: {proposal.payment_url}")
+    return lines
 
 
 def _date_value(value: str) -> str:
@@ -505,6 +663,7 @@ def render_proposal_markdown(proposal: ProposalRecord) -> str:
             f"- Package: {proposal.package_label}",
             f"- Proposed price: {proposal.proposed_price or 'To be agreed'}",
             f"- Billing: {proposal.billing or 'To be agreed'}",
+            *_payment_markdown_lines(proposal),
             f"- Contact: {proposal.contact_name} <{proposal.contact_email}>",
             "",
             "## Proposed scope",

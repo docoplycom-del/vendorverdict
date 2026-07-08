@@ -22,6 +22,7 @@
     <div class="metric"><strong>{{ proposal.package }}</strong><span>package</span></div>
     <div class="metric"><strong>{{ outcome.review_count if outcome else '—' }}</strong><span>pilot reviews</span></div>
     <div class="metric"><strong>{{ outcome.checklist_percent if outcome else '—' }}{% if outcome %}%{% endif %}</strong><span>pilot checklist</span></div>
+    <div class="metric"><strong>{{ proposal.payment_status.replace('_', ' ') }}</strong><span>payment</span></div>
   </div>
 </section>
 
@@ -111,6 +112,62 @@
       <label for="follow-up-schedule">Schedule / change follow-up date</label>
       <input id="follow-up-schedule" name="follow_up_due" type="date" value="{{ proposal.follow_up_due or default_follow_up_date }}">
       <button class="button secondary" type="submit">Save follow-up date</button>
+    </form>
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card payment-card">
+    <p class="eyebrow">Payment tracking</p>
+    <h2>Invoice / checkout state</h2>
+    <dl class="detail-list delivery-list">
+      <dt>Payment state</dt><dd>{{ proposal.payment_label }}</dd>
+      <dt>Due date</dt><dd>{{ proposal.payment_due or 'Not scheduled' }}</dd>
+      <dt>Invoice reference</dt><dd>{{ proposal.invoice_reference or '—' }}</dd>
+      <dt>Paid at</dt><dd>{{ proposal.paid_at[:19].replace('T', ' ') if proposal.paid_at else '—' }}</dd>
+    </dl>
+    {% if proposal.is_payment_overdue %}
+      <div class="notice warning">Payment is overdue. Follow up or update the payment status.</div>
+    {% endif %}
+    {% if proposal.payment_url %}
+      <div class="hero-actions compact"><a class="button" href="{{ proposal.payment_url }}" target="_blank" rel="noreferrer">Open payment link</a></div>
+    {% endif %}
+  </article>
+
+  <article class="card compact-card payment-card">
+    <p class="eyebrow">Payment actions</p>
+    <h2>Track paid pilot / rollout payment</h2>
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/payment">
+      <input type="hidden" name="action" value="mark_invoice_sent">
+      <label for="payment-due-invoice">Payment due date</label>
+      <input id="payment-due-invoice" name="payment_due" type="date" value="{{ proposal.payment_due or default_payment_due_date }}">
+      <label for="invoice-reference-sent">Invoice / payment reference</label>
+      <input id="invoice-reference-sent" name="invoice_reference" value="{{ proposal.invoice_reference }}" placeholder="INV-001 or Stripe payment link reference">
+      <label for="payment-url-sent">Payment or checkout link</label>
+      <input id="payment-url-sent" name="payment_url" value="{{ proposal.payment_url or default_payment_url }}" placeholder="https://...">
+      <button class="button" type="submit">Mark invoice/payment link sent</button>
+    </form>
+
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/payment">
+      <input type="hidden" name="action" value="mark_paid">
+      <button class="button secondary" type="submit">Mark payment received</button>
+    </form>
+
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/payment">
+      <input type="hidden" name="action" value="update">
+      <label for="payment-status">Payment status</label>
+      <select id="payment-status" name="payment_status">
+        {% for status in payment_statuses %}
+          <option value="{{ status }}" {% if proposal.payment_status == status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>
+        {% endfor %}
+      </select>
+      <label for="payment-due-update">Payment due date</label>
+      <input id="payment-due-update" name="payment_due" type="date" value="{{ proposal.payment_due or default_payment_due_date }}">
+      <label for="invoice-reference-update">Invoice / payment reference</label>
+      <input id="invoice-reference-update" name="invoice_reference" value="{{ proposal.invoice_reference }}">
+      <label for="payment-url-update">Payment or checkout link</label>
+      <input id="payment-url-update" name="payment_url" value="{{ proposal.payment_url or default_payment_url }}">
+      <button class="button secondary" type="submit">Save payment details</button>
     </form>
   </article>
 </section>

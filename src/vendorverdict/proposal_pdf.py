@@ -208,12 +208,19 @@ def _hero_box(proposal: ProposalRecord, styles: dict[str, ParagraphStyle]) -> Ta
 
 
 def _summary_table(proposal: ProposalRecord, styles: dict[str, ParagraphStyle]) -> Table:
-    return _two_col_table([
+    rows = [
         ["Proposal reference", _short_reference(proposal.proposal_id)],
         ["Package", proposal.package_label],
         ["Proposed price", proposal.proposed_price or "To be agreed"],
         ["Billing", proposal.billing or "To be agreed"],
-    ], styles)
+    ]
+    if proposal.invoice_reference:
+        rows.append(["Invoice reference", proposal.invoice_reference])
+    if proposal.payment_due:
+        rows.append(["Payment due", proposal.payment_due])
+    if proposal.payment_url:
+        rows.append(["Payment link", proposal.payment_url])
+    return _two_col_table(rows, styles)
 
 
 def _two_col_table(rows: list[list[str]], styles: dict[str, ParagraphStyle]) -> Table:

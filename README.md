@@ -843,3 +843,8 @@ The production dashboard includes `/dashboard/readiness`, an end-to-end checklis
 ### Proposal email sending
 
 Commercial proposal pages now support optional SMTP sending. When `VENDORVERDICT_EMAIL_SEND_ENABLED=1` and SMTP settings are configured in `/etc/vendorverdict/vendorverdict.env`, `/dashboard/proposals/{proposal_id}` can send the customer proposal email directly, attach the customer PDF, include the customer share link when available, mark the proposal as sent, and schedule follow-up. Without SMTP, the existing mailto/manual tracking flow remains available. See `docs/PROPOSAL_EMAIL_SENDING.md`.
+
+
+### Proposal payment tracking
+
+VendorVerdict includes a lightweight payment tracker for proposal follow-up: invoice/payment reference, payment due date, optional checkout link, paid state, overdue warnings, and customer-safe payment details in proposal exports. See `docs/PAYMENT_TRACKING.md`.

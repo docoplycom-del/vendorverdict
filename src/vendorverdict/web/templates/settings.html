@@ -39,7 +39,7 @@
         {% if key in ["default_proposal_billing"] %}
           <textarea id="setting-{{ key }}" name="{{ key }}" rows="3">{{ settings[key] }}</textarea>
         {% else %}
-          <input id="setting-{{ key }}" name="{{ key }}" value="{{ settings[key] }}" {% if key == "default_follow_up_days" %}type="number" min="0" max="90"{% endif %}>
+          <input id="setting-{{ key }}" name="{{ key }}" value="{{ settings[key] }}" {% if key in ["default_follow_up_days", "default_payment_due_days"] %}type="number" min="0" max="90"{% endif %}>
         {% endif %}
       {% endfor %}
       <button class="button" type="submit">Save settings</button>
@@ -57,6 +57,7 @@
       <li>New review forms use the default region and data sensitivity.</li>
       <li>New commercial proposals use the default proposal price and billing wording.</li>
       <li>Proposal delivery tracking uses the default follow-up date when none is entered.</li>
+      <li>Payment tracking uses the default payment due date and optional payment link.</li>
       <li>Customer share links and lead follow-up links use the public URL when set.</li>
     </ul>
 

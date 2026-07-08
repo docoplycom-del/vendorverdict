@@ -29,6 +29,7 @@ from vendorverdict.leads import LEAD_STATUSES, LeadStore
 from vendorverdict.pilots import PILOT_PACKAGES, PILOT_STATUSES, PilotStore
 from vendorverdict.pilot_outcomes import build_pilot_outcome, render_pilot_outcome_markdown
 from vendorverdict.proposals import (
+    PAYMENT_STATUSES,
     PROPOSAL_PACKAGES,
     PROPOSAL_STATUSES,
     ProposalStore,
@@ -943,6 +944,7 @@ def create_app(
                 "proposals": proposals.list_proposals(limit=100),
                 "status_counts": proposals.status_counts(),
                 "delivery_counts": proposals.delivery_counts(),
+                "payment_counts": proposals.payment_counts(),
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "auth": _auth_context(request),
             },
@@ -1104,9 +1106,12 @@ def create_app(
                 "mailto_link": mailto_link,
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "proposal_packages": PROPOSAL_PACKAGES,
+                "payment_statuses": PAYMENT_STATUSES,
                 "share": share,
                 "share_url": share_url,
                 "default_follow_up_date": _follow_up_date(configured_settings.follow_up_days_int),
+                "default_payment_due_date": _follow_up_date(configured_settings.payment_due_days_int),
+                "default_payment_url": configured_settings.default_payment_url,
                 "email_send_settings": email_settings,
                 "email_send_configured": email_settings.is_configured,
                 "email_send_missing_fields": email_settings.missing_fields,
@@ -1162,6 +1167,36 @@ def create_app(
             updated = proposals.mark_followed_up(proposal_id, follow_up_due=follow_up_due)
         else:
             updated = proposals.schedule_follow_up(proposal_id, follow_up_due=follow_up_due)
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
+
+
+    @app.post("/dashboard/proposals/{proposal_id}/payment")
+    async def update_dashboard_proposal_payment(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        action = form.get("action", "update")
+        payment_due = form.get("payment_due", "") or _follow_up_date(settings_store().get_settings().payment_due_days_int)
+        payment_url = form.get("payment_url", "")
+        invoice_reference = form.get("invoice_reference", "")
+        proposals = proposal_store()
+        if action == "mark_invoice_sent":
+            updated = proposals.mark_invoice_sent(
+                proposal_id,
+                payment_due=payment_due,
+                payment_url=payment_url,
+                invoice_reference=invoice_reference,
+            )
+        elif action == "mark_paid":
+            updated = proposals.mark_paid(proposal_id)
+        else:
+            updated = proposals.update_payment(
+                proposal_id,
+                payment_status=form.get("payment_status", "not_requested"),
+                payment_due=payment_due,
+                payment_url=payment_url,
+                invoice_reference=invoice_reference,
+            )
         if not updated:
             raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
@@ -1612,13 +1647,17 @@ def _validate_settings_values(values: dict[str, str]) -> list[str]:
     public_url = values.get("public_url", "").strip()
     if public_url and not public_url.startswith(("https://", "http://")):
         errors.append("Public URL must start with https:// or http://.")
-    try:
-        days = int(values.get("default_follow_up_days", "7"))
-    except ValueError:
-        errors.append("Default follow-up days must be a number.")
-    else:
-        if days < 0 or days > 90:
-            errors.append("Default follow-up days must be between 0 and 90.")
+    for key, label in (("default_follow_up_days", "Default follow-up days"), ("default_payment_due_days", "Default payment due days")):
+        try:
+            days = int(values.get(key, "7"))
+        except ValueError:
+            errors.append(f"{label} must be a number.")
+        else:
+            if days < 0 or days > 90:
+                errors.append(f"{label} must be between 0 and 90.")
+    payment_url = values.get("default_payment_url", "").strip()
+    if payment_url and not payment_url.startswith(("https://", "http://")):
+        errors.append("Default payment link must start with https:// or http://.")
     return errors
 
 

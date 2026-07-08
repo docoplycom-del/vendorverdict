@@ -185,6 +185,12 @@ class AuthenticationTests(unittest.TestCase):
         if response.status_code == 303:
             self.assertTrue(response.headers["location"].startswith("/login"))
 
+    def test_dashboard_proposal_payment_requires_authentication(self) -> None:
+        response = self.client.post("/dashboard/proposals/example-proposal-id/payment", data={"action": "mark_paid"}, follow_redirects=False)
+        self.assertIn(response.status_code, {303, 401})
+        if response.status_code == 303:
+            self.assertTrue(response.headers["location"].startswith("/login"))
+
     def test_login_rejects_invalid_password(self) -> None:
         response = self.client.post(
             "/login",
