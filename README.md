@@ -740,3 +740,8 @@ VendorVerdict can notify you when someone submits the public demo or pilot form.
 
 
 - Contrast-hardened demo and lead capture forms with readable buttons, inputs, placeholders, and focus states.
+
+
+### Visual contrast hardening
+
+The public demo, pilot form, dashboard buttons, lead inbox, and report actions use a final high-contrast CSS override with cache-busting to keep button text, form input text, placeholders, and callout copy readable in production.

@@ -1,37 +1,24 @@
-# Contrast accessibility hardening
+# Contrast and accessibility hardening
 
-VendorVerdict uses a dark interface. The demo and pilot forms use light input fields, so form text, placeholder text, and button text must be explicitly declared rather than inherited from the dark page theme.
+This release adds a final high-contrast CSS override for the public demo, pilot form, dashboard, lead inbox, and report actions.
 
-This update fixes two production issues:
+## Fixed areas
 
-- Primary button text inside cards was being overridden by the generic `.card a` rule.
-- Lead capture inputs and textareas inherited light text from the dark page theme while using white field backgrounds.
+- Primary action buttons such as `Request pilot`, `Start new vendor review`, and `View report`.
+- Secondary dashboard buttons.
+- Lead-capture inputs and textareas.
+- Pilot page `Use case` and `Message` fields.
+- Informational callouts such as `Best for`.
+- Table headers, muted copy, metric labels, and dashboard helper text.
 
-The stylesheet now includes a final high-specificity contrast block for:
+## Implementation
 
-- primary buttons and visited button links,
-- secondary buttons,
-- form inputs,
-- textareas,
-- placeholder text,
-- focus states,
-- demo and dashboard lead capture forms.
+The CSS now uses a final override block at the end of `style.css` with high-specificity selectors under `html body`. Buttons use a dark high-contrast background with white text so they remain readable even if generic link styles partially override the colour. Forms use dark fields with light placeholder and typed text so text remains visible across Chrome, incognito windows, and cached sessions.
 
-The base template also uses a versioned stylesheet URL so browsers fetch the new CSS immediately after deployment.
+The base template uses a cache-busting stylesheet URL:
 
-## Manual checks
+```html
+/static/style.css?v=20260708-visual-contrast-final
+```
 
-Open these pages after deployment:
-
-- `/demo`
-- `/pilot`
-- `/dashboard`
-- `/dashboard/leads`
-
-Check that:
-
-- primary button text is dark and readable on the turquoise/green gradient,
-- secondary button text is white and readable,
-- input text is dark on white backgrounds,
-- placeholder text is dark grey on white backgrounds,
-- focused form fields have a visible focus outline.
+After deployment, hard-refresh or open the pages in a new incognito window.

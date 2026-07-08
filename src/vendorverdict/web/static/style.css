@@ -273,3 +273,144 @@ button.button.secondary,
 .card a:not(.button):not(.brand) {
   color: var(--accent-2);
 }
+
+/* Final visual accessibility override.
+   Uses dark form fields and dark buttons so text remains readable even if
+   browser/link styles partially override colours. Keep this at the very end. */
+:root {
+  --vv-action-bg: #172554;
+  --vv-action-bg-hover: #1e3a8a;
+  --vv-action-text: #ffffff;
+  --vv-action-border: rgba(40, 213, 255, 0.95);
+  --vv-field-bg: #0f172a;
+  --vv-field-text: #f8fafc;
+  --vv-field-placeholder: #cbd5e1;
+  --vv-field-border: #64748b;
+  --vv-callout-bg: #0f172a;
+  --vv-callout-text: #f8fafc;
+}
+
+html body .container a.button,
+html body .container a.button:link,
+html body .container a.button:visited,
+html body .container button.button,
+html body .container input[type="submit"].button,
+html body .card a.button,
+html body .card a.button:link,
+html body .card a.button:visited,
+html body .hero-actions a.button,
+html body .hero-actions a.button:link,
+html body .hero-actions a.button:visited,
+html body .inline-form button.button,
+html body form button.button {
+  background: var(--vv-action-bg) !important;
+  color: var(--vv-action-text) !important;
+  -webkit-text-fill-color: var(--vv-action-text) !important;
+  border: 1px solid var(--vv-action-border) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset, 0 10px 28px rgba(0,0,0,.25) !important;
+  text-shadow: none !important;
+}
+
+html body .container a.button:hover,
+html body .container button.button:hover,
+html body .card a.button:hover,
+html body form button.button:hover {
+  background: var(--vv-action-bg-hover) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html body .container a.button.secondary,
+html body .container a.button.secondary:link,
+html body .container a.button.secondary:visited,
+html body .card a.button.secondary,
+html body .card a.button.secondary:link,
+html body .card a.button.secondary:visited,
+html body .hero-actions a.button.secondary,
+html body .hero-actions a.button.secondary:link,
+html body .hero-actions a.button.secondary:visited,
+html body button.button.secondary {
+  background: #1f2937 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid #64748b !important;
+}
+
+html body .form-card input,
+html body .form-card textarea,
+html body .compact-form input,
+html body .compact-form textarea,
+html body .review-form input,
+html body .review-form textarea,
+html body .review-builder input,
+html body .review-builder textarea,
+html body .review-builder select,
+html body .review-form select,
+html body textarea,
+html body input[type="text"],
+html body input[type="email"],
+html body input[type="password"] {
+  background: var(--vv-field-bg) !important;
+  color: var(--vv-field-text) !important;
+  -webkit-text-fill-color: var(--vv-field-text) !important;
+  border: 1px solid var(--vv-field-border) !important;
+  caret-color: var(--vv-field-text) !important;
+  opacity: 1 !important;
+}
+
+html body .form-card input::placeholder,
+html body .form-card textarea::placeholder,
+html body .compact-form input::placeholder,
+html body .compact-form textarea::placeholder,
+html body .review-form input::placeholder,
+html body .review-form textarea::placeholder,
+html body .review-builder input::placeholder,
+html body .review-builder textarea::placeholder,
+html body input::placeholder,
+html body textarea::placeholder {
+  color: var(--vv-field-placeholder) !important;
+  -webkit-text-fill-color: var(--vv-field-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html body .form-card input:focus,
+html body .form-card textarea:focus,
+html body .compact-form input:focus,
+html body .compact-form textarea:focus,
+html body .review-form input:focus,
+html body .review-form textarea:focus,
+html body .review-builder input:focus,
+html body .review-builder textarea:focus,
+html body input:focus,
+html body textarea:focus,
+html body select:focus {
+  outline: 4px solid rgba(40, 213, 255, 0.42) !important;
+  outline-offset: 2px !important;
+  border-color: #38bdf8 !important;
+}
+
+html body .callout,
+html body .card .callout {
+  background: var(--vv-callout-bg) !important;
+  color: var(--vv-callout-text) !important;
+  -webkit-text-fill-color: var(--vv-callout-text) !important;
+  border: 1px solid #64748b !important;
+}
+
+html body .callout strong,
+html body .card .callout strong {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html body th,
+html body .pill,
+html body .metric span,
+html body .muted,
+html body .lead,
+html body .check-list,
+html body .steps,
+html body .finding p {
+  color: #cbd5e1 !important;
+}
+

@@ -192,12 +192,13 @@ if __name__ == "__main__":
 class ContrastCssTests(unittest.TestCase):
     def test_demo_and_lead_capture_contrast_rules_are_present(self):
         css = Path("src/vendorverdict/web/static/style.css").read_text(encoding="utf-8")
-        self.assertIn("--button-primary-text", css)
-        self.assertIn("--field-light-text", css)
-        self.assertIn("-webkit-text-fill-color", css)
-        self.assertIn(".card a.button", css)
-        self.assertIn(".form-card input::placeholder", css)
+        self.assertIn("--vv-action-bg", css)
+        self.assertIn("--vv-field-bg", css)
+        self.assertIn("--vv-field-placeholder", css)
+        self.assertIn("html body .container a.button", css)
+        self.assertIn("html body .form-card textarea", css)
+        self.assertIn("html body .callout", css)
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-contrast-hardening", template)
+        self.assertIn("style.css?v=20260708-visual-contrast-final", template)
