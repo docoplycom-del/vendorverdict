@@ -739,8 +739,4 @@ sudo scripts/deploy_gcp_vm.sh
 VendorVerdict can notify you when someone submits the public demo or pilot form. Configure `VENDORVERDICT_LEAD_NOTIFY_ENABLED=1` and either `VENDORVERDICT_LEAD_WEBHOOK_URL` or reuse the existing monitor alert webhook. Notification status is stored with each lead and shown in `/dashboard/leads`. See `docs/LEAD_NOTIFICATIONS.md`.
 
 
-
-## Contrast/accessibility polish
-
-The dashboard and public demo use high-contrast form controls, button text, placeholder text, table headers, and focus states. See `docs/CONTRAST_ACCESSIBILITY.md`.
-
+- Contrast-hardened demo and lead capture forms with readable buttons, inputs, placeholders, and focus states.

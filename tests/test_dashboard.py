@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 import unittest
 
 from fastapi.testclient import TestClient
@@ -61,16 +61,6 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('action="/leads/request"', response.text)
         self.assertIn("Request pilot", response.text)
-
-
-
-    def test_contrast_styles_protect_buttons_and_lead_forms(self) -> None:
-        css = Path("src/vendorverdict/web/static/style.css").read_text(encoding="utf-8")
-        self.assertIn(".card a:not(.button)", css)
-        self.assertIn(".card a.button", css)
-        self.assertIn("--input-text", css)
-        self.assertIn("input::placeholder", css)
-        self.assertIn(".table-wrap th", css)
 
     def test_lead_form_saves_request_and_dashboard_lists_it(self) -> None:
         response = self.client.post(
@@ -198,3 +188,16 @@ def _restore_env(key: str, value: str | None) -> None:
 
 if __name__ == "__main__":
     unittest.main()
+
+class ContrastCssTests(unittest.TestCase):
+    def test_demo_and_lead_capture_contrast_rules_are_present(self):
+        css = Path("src/vendorverdict/web/static/style.css").read_text(encoding="utf-8")
+        self.assertIn("--button-primary-text", css)
+        self.assertIn("--field-light-text", css)
+        self.assertIn("-webkit-text-fill-color", css)
+        self.assertIn(".card a.button", css)
+        self.assertIn(".form-card input::placeholder", css)
+
+    def test_stylesheet_is_versioned_to_break_browser_cache(self):
+        template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
+        self.assertIn("style.css?v=20260708-contrast-hardening", template)

@@ -8,13 +8,7 @@
   --accent: #8d7cff;
   --accent-2: #28d5ff;
   --ok: #2ee59d;
-  --input-bg: rgba(3, 8, 24, .82);
-  --input-text: #f8fbff;
-  --input-placeholder: #9fb0d0;
-  --input-border: rgba(184, 205, 255, .34);
-  --input-focus: #28d5ff;
 }
-
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at top left, #17235c 0, var(--bg) 38rem); color: var(--text); }
 a { color: inherit; }
@@ -35,8 +29,8 @@ h2 { font-size: 1.5rem; }
 .lead { color: var(--muted); font-size: 1.08rem; max-width: 720px; }
 .eyebrow { color: var(--accent-2); text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; font-weight: 800; }
 .muted { color: var(--muted); }
-.button, a.button, button.button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 12px; padding: .8rem 1rem; font-weight: 900; text-decoration: none; color: #07101f; background: linear-gradient(135deg, #4cecff, var(--ok)); cursor: pointer; text-shadow: none; }
-.button.secondary, a.button.secondary, button.button.secondary { color: var(--text); background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.24); }
+.button, button.button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 12px; padding: .8rem 1rem; font-weight: 800; text-decoration: none; color: #07101f; background: linear-gradient(135deg, var(--accent-2), var(--ok)); cursor: pointer; }
+.button.secondary { color: var(--text); background: rgba(255,255,255,.08); border: 1px solid var(--line); }
 .button.small { padding: .55rem .75rem; font-size: .9rem; }
 .hero-actions { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.2rem; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; min-width: 320px; }
@@ -53,7 +47,7 @@ h2 { font-size: 1.5rem; }
 .empty { text-align: center; }
 .review-form { display: grid; gap: 1rem; margin-top: 1.3rem; }
 label { font-weight: 800; }
-textarea { width: 100%; resize: vertical; border-radius: 16px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); padding: 1rem; font: inherit; line-height: 1.45; }
+textarea { width: 100%; resize: vertical; border-radius: 16px; border: 1px solid var(--line); background: rgba(3,8,24,.72); color: var(--text); padding: 1rem; font: inherit; line-height: 1.45; }
 .checkbox-row { display: grid; gap: .7rem; color: var(--muted); }
 .alert { border: 1px solid rgba(255, 130, 130, .5); background: rgba(255, 80, 80, .12); color: #ffd1d1; border-radius: 16px; padding: .8rem 1rem; }
 .grid-two { display: grid; grid-template-columns: 1.15fr .85fr; gap: 1rem; margin: 1rem 0; }
@@ -102,9 +96,9 @@ th { color: var(--muted); font-size: .85rem; }
 .review-form select {
   width: 100%;
   border-radius: 14px;
-  border: 1px solid var(--input-border);
-  background: var(--input-bg);
-  color: var(--input-text);
+  border: 1px solid var(--line);
+  background: rgba(3,8,24,.72);
+  color: var(--text);
   padding: .85rem 1rem;
   font: inherit;
 }
@@ -119,9 +113,7 @@ th { color: var(--muted); font-size: .85rem; }
 .report-metrics { margin: 1rem 0; }
 .report-metrics .metric { min-height: 86px; }
 .report-metrics .metric strong { font-size: 1.35rem; }
-.card a:not(.button) { color: var(--accent-2); }
-.card a.button, .card button.button { color: #07101f; }
-.card a.button.secondary, .card button.button.secondary { color: var(--text); }
+.card a { color: var(--accent-2); }
 @media (max-width: 900px) {
   .grid-three, .form-grid, .checkbox-row.cards { grid-template-columns: 1fr; }
   .landing-cta { display: block; }
@@ -145,8 +137,7 @@ th { color: var(--muted); font-size: .85rem; }
 .form-card label {
   display: block;
   margin: 0 0 0.95rem;
-  font-weight: 800;
-  color: var(--text);
+  font-weight: 700;
 }
 
 .form-card input,
@@ -154,13 +145,11 @@ th { color: var(--muted); font-size: .85rem; }
   width: 100%;
   box-sizing: border-box;
   margin-top: 0.35rem;
-  border: 1px solid var(--input-border);
+  border: 1px solid #d8dee9;
   border-radius: 12px;
   padding: 0.8rem 0.9rem;
   font: inherit;
-  background: var(--input-bg);
-  color: var(--input-text);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+  background: #fff;
 }
 
 .form-card textarea {
@@ -172,9 +161,9 @@ th { color: var(--muted); font-size: .85rem; }
 }
 
 .alert.error {
-  background: rgba(255, 80, 80, .14);
-  border: 1px solid rgba(255, 170, 170, .55);
-  color: #ffe4e4;
+  background: #fff5f5;
+  border: 1px solid #ffc9c9;
+  color: #7a1d1d;
   border-radius: 14px;
   padding: 0.8rem 1rem;
   margin-bottom: 1rem;
@@ -184,66 +173,103 @@ th { color: var(--muted); font-size: .85rem; }
   margin-top: 1rem;
   padding: 1rem;
   border-radius: 14px;
-  background: rgba(40, 213, 255, .08);
-  border: 1px solid rgba(40, 213, 255, .28);
-  color: var(--text);
+  background: #f7f9fc;
+  border: 1px solid #e6ebf2;
 }
 
 .demo-lead-capture {
   margin-top: 1.2rem;
 }
 
-
-/* Contrast and accessibility polish */
-input::placeholder,
-textarea::placeholder {
-  color: var(--input-placeholder);
-  opacity: 1;
+/* High-specificity contrast hardening for demo, pilot, and dashboard forms.
+   Keep this block at the end so it wins over generic card/link rules. */
+:root {
+  --button-primary-text: #061222;
+  --field-light-bg: #ffffff;
+  --field-light-text: #111827;
+  --field-light-placeholder: #4b5563;
+  --field-light-border: #94a3b8;
+  --field-light-focus: #0284c7;
 }
 
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: var(--input-focus);
-  outline: 3px solid rgba(40, 213, 255, .22);
+.card a.button,
+.card a.button:link,
+.card a.button:visited,
+a.button,
+a.button:link,
+a.button:visited,
+button.button,
+.form-card button.button,
+.hero-actions a.button,
+.hero-actions a.button:link,
+.hero-actions a.button:visited {
+  color: var(--button-primary-text) !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: var(--button-primary-text) !important;
+}
+
+.card a.button.secondary,
+.card a.button.secondary:link,
+.card a.button.secondary:visited,
+a.button.secondary,
+a.button.secondary:link,
+a.button.secondary:visited,
+button.button.secondary,
+.hero-actions a.button.secondary,
+.hero-actions a.button.secondary:link,
+.hero-actions a.button.secondary:visited {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+}
+
+.form-card input,
+.form-card textarea,
+.compact-form input,
+.compact-form textarea,
+.review-form input,
+.review-form textarea,
+.review-builder input,
+.review-builder textarea {
+  color: var(--field-light-text) !important;
+  -webkit-text-fill-color: var(--field-light-text) !important;
+  background: var(--field-light-bg) !important;
+  border-color: var(--field-light-border) !important;
+  caret-color: var(--field-light-text) !important;
+}
+
+.form-card input::placeholder,
+.form-card textarea::placeholder,
+.compact-form input::placeholder,
+.compact-form textarea::placeholder,
+.review-form input::placeholder,
+.review-form textarea::placeholder,
+.review-builder input::placeholder,
+.review-builder textarea::placeholder {
+  color: var(--field-light-placeholder) !important;
+  -webkit-text-fill-color: var(--field-light-placeholder) !important;
+  opacity: 1 !important;
+}
+
+.form-card input:focus,
+.form-card textarea:focus,
+.compact-form input:focus,
+.compact-form textarea:focus,
+.review-form input:focus,
+.review-form textarea:focus,
+.review-builder input:focus,
+.review-builder textarea:focus {
+  border-color: var(--field-light-focus) !important;
+  outline: 4px solid rgba(40, 213, 255, .28) !important;
   outline-offset: 2px;
 }
 
-.button:focus-visible,
-a.button:focus-visible,
-button.button:focus-visible,
-nav a:focus-visible,
-.link-button:focus-visible {
-  outline: 3px solid rgba(40, 213, 255, .55);
-  outline-offset: 3px;
+.form-card label,
+.compact-form label,
+.review-form label,
+.review-builder label {
+  color: var(--text) !important;
 }
 
-.table-wrap {
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 16px;
-  background: rgba(3, 8, 24, .32);
-}
-
-.table-wrap table {
-  min-width: 760px;
-}
-
-.table-wrap th {
-  color: #c5d5f7;
-}
-
-.table-wrap td {
-  color: #f3f7ff;
-}
-
-.table-wrap tr:hover td {
-  background: rgba(255,255,255,.035);
-}
-
-.form-card .button {
-  width: auto;
-}
-
-@media (max-width: 780px) {
-  .button, a.button, button.button { width: 100%; }
+.card a:not(.button):not(.brand) {
+  color: var(--accent-2);
 }
