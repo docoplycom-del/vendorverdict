@@ -44,6 +44,11 @@ from vendorverdict.proposal_email_delivery import (
     get_proposal_email_settings,
     send_customer_proposal_email,
 )
+from vendorverdict.proposal_payment_delivery import (
+    build_payment_email_pair,
+    build_payment_mailto,
+    send_payment_email,
+)
 from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.readiness import build_readiness_snapshot
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
@@ -1094,6 +1099,8 @@ def create_app(
         mailto_link = build_proposal_mailto(proposal)
         email_settings = get_proposal_email_settings()
         delivery_notice = _proposal_delivery_notice(request.query_params.get("delivery", ""))
+        payment_delivery_notice = _payment_delivery_notice(request.query_params.get("payment_delivery", ""))
+        payment_emails = build_payment_email_pair(proposal, share_url=share_url)
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -1116,6 +1123,11 @@ def create_app(
                 "email_send_configured": email_settings.is_configured,
                 "email_send_missing_fields": email_settings.missing_fields,
                 "delivery_notice": delivery_notice,
+                "payment_delivery_notice": payment_delivery_notice,
+                "payment_request_email": payment_emails.request,
+                "payment_reminder_email": payment_emails.reminder,
+                "payment_request_mailto": build_payment_mailto(proposal, share_url=share_url),
+                "payment_reminder_mailto": build_payment_mailto(proposal, reminder=True, share_url=share_url),
                 "auth": _auth_context(request),
             },
         )
@@ -1200,6 +1212,47 @@ def create_app(
         if not updated:
             raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
+
+    @app.post("/dashboard/proposals/{proposal_id}/payment/send")
+    async def send_dashboard_payment_email(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        action = form.get("action", "request")
+        payment_due = form.get("payment_due", "") or _follow_up_date(settings_store().get_settings().payment_due_days_int)
+        payment_url = form.get("payment_url", "")
+        invoice_reference = form.get("invoice_reference", "")
+        proposals = proposal_store()
+        proposal = proposals.get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        email_settings = get_proposal_email_settings()
+        if not email_settings.is_configured:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?payment_delivery=not_configured", status_code=303)
+
+        if action == "request":
+            updated = proposals.mark_invoice_sent(
+                proposal_id,
+                payment_due=payment_due,
+                payment_url=payment_url,
+                invoice_reference=invoice_reference,
+            )
+            if not updated:
+                raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+            proposal = proposals.get_proposal(proposal_id)
+            if proposal is None:
+                raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+
+        share = share_store().get_for_resource("proposal", proposal_id)
+        configured_settings = settings_store().get_settings()
+        share_url = _full_share_url(request, share, resource_type="proposal", public_url=configured_settings.public_url) if share else ""
+        result = send_payment_email(
+            proposal,
+            reminder=action == "reminder",
+            share_url=share_url,
+            settings=email_settings,
+        )
+        if not result.sent:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?payment_delivery=error", status_code=303)
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?payment_delivery={'reminder_sent' if action == 'reminder' else 'sent'}", status_code=303)
 
     @app.post("/dashboard/proposals/{proposal_id}/update")
     async def update_dashboard_proposal(request: Request, proposal_id: str) -> RedirectResponse:
@@ -1636,6 +1689,17 @@ def _proposal_delivery_notice(value: str) -> dict[str, str]:
         return {"level": "warning", "message": "SMTP email sending is not configured. Use the mailto link or add SMTP settings in the VM env file."}
     if value == "error":
         return {"level": "error", "message": "Proposal email could not be sent. Check SMTP settings and service logs."}
+    return {}
+
+def _payment_delivery_notice(value: str) -> dict[str, str]:
+    if value == "sent":
+        return {"level": "success", "message": "Payment request email sent and payment state marked as invoice/payment link sent."}
+    if value == "reminder_sent":
+        return {"level": "success", "message": "Payment reminder email sent."}
+    if value == "not_configured":
+        return {"level": "warning", "message": "SMTP email sending is not configured. Use the payment mailto links or add SMTP settings in the VM env file."}
+    if value == "error":
+        return {"level": "error", "message": "Payment email could not be sent. Check SMTP settings and service logs."}
     return {}
 
 def _follow_up_date(days: int) -> str:

@@ -298,6 +298,9 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Direct email sending", proposal_detail.text)
         self.assertIn("SMTP sending is not configured yet", proposal_detail.text)
         self.assertIn("Payment tracking", proposal_detail.text)
+        self.assertIn("Payment email", proposal_detail.text)
+        self.assertIn("Open payment request email", proposal_detail.text)
+        self.assertIn("Open payment reminder", proposal_detail.text)
         self.assertIn("Mark invoice/payment link sent", proposal_detail.text)
 
         proposal_update = self.client.post(
@@ -364,6 +367,23 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("invoice sent", payment_page.text)
         self.assertIn("INV-VV-001", payment_page.text)
         self.assertIn("https://pay.example.com/vendorverdict", payment_page.text)
+        self.assertIn("VendorVerdict payment details", payment_page.text)
+
+        payment_send_without_smtp = self.client.post(
+            proposal_create.headers["location"] + "/payment/send",
+            data={
+                "action": "request",
+                "payment_due": "2026-07-30",
+                "invoice_reference": "INV-VV-001",
+                "payment_url": "https://pay.example.com/vendorverdict",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(payment_send_without_smtp.status_code, 303)
+        self.assertTrue(payment_send_without_smtp.headers["location"].endswith("?payment_delivery=not_configured"))
+        payment_send_notice = self.client.get(payment_send_without_smtp.headers["location"])
+        self.assertEqual(payment_send_notice.status_code, 200)
+        self.assertIn("SMTP email sending is not configured", payment_send_notice.text)
 
         paid_update = self.client.post(
             proposal_create.headers["location"] + "/payment",

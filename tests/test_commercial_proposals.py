@@ -8,6 +8,10 @@ from vendorverdict.leads import LeadStore
 from vendorverdict.pilot_outcomes import build_pilot_outcome
 from vendorverdict.pilots import PilotStore
 from vendorverdict.proposal_pdf import export_proposal_pdf, format_proposal_date
+from vendorverdict.proposal_payment_delivery import (
+    build_payment_email_pair,
+    build_payment_mailto,
+)
 from vendorverdict.proposals import (
     ProposalStore,
     build_proposal_email,
@@ -154,6 +158,16 @@ class CommercialProposalTests(unittest.TestCase):
         mailto = build_proposal_mailto(followed)
         self.assertIn("mailto:morgan%40example.com", mailto)
         self.assertIn("VendorVerdict%20next%20step", mailto)
+
+        payment_emails = build_payment_email_pair(paid, share_url="https://vendorverdict.example/share/proposal/test")
+        self.assertIn("payment details", payment_emails.request.subject.lower())
+        self.assertIn("INV-VV-001", payment_emails.request.body)
+        self.assertIn("https://pay.example.com/vendorverdict", payment_emails.request.body)
+        self.assertIn("Proposal link", payment_emails.request.body)
+        self.assertIn("Reminder", payment_emails.reminder.subject)
+        payment_mailto = build_payment_mailto(paid, share_url="https://vendorverdict.example/share/proposal/test")
+        self.assertIn("mailto:morgan%40example.com", payment_mailto)
+        self.assertIn("VendorVerdict%20payment%20details", payment_mailto)
 
         markdown = render_proposal_markdown(paid)
         self.assertIn("VendorVerdict proposal", markdown)

@@ -117,6 +117,51 @@
 </section>
 
 <section class="grid-two lead-detail-grid">
+  <article class="card compact-card followup-card payment-email-card">
+    <p class="eyebrow">Payment email</p>
+    <h2>Request or remind payment</h2>
+    <p class="muted">Use this after the commercial proposal is agreed or when you need to send a polite payment reminder. The customer-facing email includes payment details and the proposal share link when one exists.</p>
+    {% if payment_delivery_notice %}
+      <div class="notice {{ payment_delivery_notice.level }}">{{ payment_delivery_notice.message }}</div>
+    {% endif %}
+    <div class="hero-actions compact">
+      <a class="button" href="{{ payment_request_mailto }}">Open payment request email</a>
+      <a class="button secondary" href="{{ payment_reminder_mailto }}">Open payment reminder</a>
+    </div>
+    <label for="payment-request-subject">Request subject</label>
+    <input id="payment-request-subject" value="{{ payment_request_email.subject }}" readonly>
+    <label for="payment-request-body">Request body</label>
+    <textarea id="payment-request-body" rows="10" readonly>{{ payment_request_email.body }}</textarea>
+  </article>
+
+  <article class="card compact-card payment-email-card">
+    <p class="eyebrow">Direct payment email</p>
+    <h2>Send through SMTP</h2>
+    {% if email_send_configured %}
+      <p class="muted">SMTP is configured. Sending a payment request updates the payment state only after SMTP succeeds.</p>
+      <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/payment/send">
+        <input type="hidden" name="action" value="request">
+        <label for="payment-email-due">Payment due date</label>
+        <input id="payment-email-due" name="payment_due" type="date" value="{{ proposal.payment_due or default_payment_due_date }}">
+        <label for="payment-email-reference">Invoice / payment reference</label>
+        <input id="payment-email-reference" name="invoice_reference" value="{{ proposal.invoice_reference }}" placeholder="INV-001 or Stripe link reference">
+        <label for="payment-email-url">Payment or checkout link</label>
+        <input id="payment-email-url" name="payment_url" value="{{ proposal.payment_url or default_payment_url }}" placeholder="https://...">
+        <button class="button" type="submit">Send payment request now</button>
+      </form>
+
+      <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/payment/send">
+        <input type="hidden" name="action" value="reminder">
+        <button class="button secondary" type="submit">Send payment reminder now</button>
+      </form>
+    {% else %}
+      <p class="muted">SMTP sending is not configured. Use the mailto links above, then update payment tracking manually.</p>
+      <div class="notice warning">Missing email settings: {{ email_send_missing_fields|join(', ') }}</div>
+    {% endif %}
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
   <article class="card compact-card payment-card">
     <p class="eyebrow">Payment tracking</p>
     <h2>Invoice / checkout state</h2>

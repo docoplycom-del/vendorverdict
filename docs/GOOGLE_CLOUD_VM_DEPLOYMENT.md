@@ -509,3 +509,9 @@ Then run the safe deploy script. See `docs/PROPOSAL_EMAIL_SENDING.md`.
 ## Payment tracking defaults
 
 The admin settings page can set non-secret payment defaults such as `VENDORVERDICT_DEFAULT_PAYMENT_DUE_DAYS` and `VENDORVERDICT_DEFAULT_PAYMENT_URL`. Keep payment-provider secrets outside the dashboard and store them only in `/etc/vendorverdict/vendorverdict.env` if needed.
+
+## Payment request workflow
+
+- Payment request workflow: proposal pages include payment request/reminder templates, mailto fallback, and optional SMTP sending for invoice/payment links.
+
+Payment request emails reuse the SMTP variables documented in the proposal email sending section.

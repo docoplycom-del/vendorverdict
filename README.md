@@ -848,3 +848,7 @@ Commercial proposal pages now support optional SMTP sending. When `VENDORVERDICT
 ### Proposal payment tracking
 
 VendorVerdict includes a lightweight payment tracker for proposal follow-up: invoice/payment reference, payment due date, optional checkout link, paid state, overdue warnings, and customer-safe payment details in proposal exports. See `docs/PAYMENT_TRACKING.md`.
+
+## Latest production additions
+
+- Payment request workflow: proposal pages include payment request/reminder templates, mailto fallback, and optional SMTP sending for invoice/payment links.
