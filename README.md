@@ -11,6 +11,19 @@ It is built for the Fetch.ai Innovation Lab / UK AI Agent Hack. The primary work
 
 ---
 
+
+## Pilot package
+
+The production web app includes a public pilot package page at `/pricing` and a request form at `/pilot`.
+
+Default public offer:
+
+- From £1,500
+- 4 weeks
+- 10–20 SaaS vendor reviews
+- Guided setup and review session
+- PDF/Markdown reports and due-diligence questions
+
 ## Agent details
 
 | Field | Value |

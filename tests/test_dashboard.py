@@ -33,6 +33,7 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Evidence-backed vendor reviews", response.text)
         self.assertIn("Login to dashboard", response.text)
+        self.assertIn("Pilot package", response.text)
 
     def test_favicon_routes_are_available(self) -> None:
         ico = self.client.get("/favicon.ico")
@@ -50,11 +51,20 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Due-diligence email", response.text)
 
 
+
+    def test_public_pricing_page_renders(self) -> None:
+        response = self.client.get("/pricing")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Start with a focused paid pilot", response.text)
+        self.assertIn("From £1,500", response.text)
+        self.assertIn("10–20", response.text)
+
     def test_public_pilot_request_form_renders(self) -> None:
         response = self.client.get("/pilot")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Request a pilot", response.text)
         self.assertIn("Vendors you are considering", response.text)
+        self.assertIn("from £1,500", response.text)
 
     def test_demo_page_contains_lead_capture_form(self) -> None:
         response = self.client.get("/demo")

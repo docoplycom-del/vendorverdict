@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict pilot package{% endblock %}
+{% block content %}
+<section class="hero card landing-hero">
+  <div>
+    <p class="eyebrow">Pilot package</p>
+    <h1>Start with a focused paid pilot.</h1>
+    <p class="lead">VendorVerdict is designed to prove value quickly: run real SaaS buying scenarios, generate decision-ready reports, and decide whether the workflow should become part of your procurement process.</p>
+    <div class="hero-actions">
+      <a class="button" href="/pilot">Request pilot</a>
+      <a class="button secondary" href="/demo">View sample report</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>£1,500+</strong><span>starting pilot</span></div>
+    <div class="metric"><strong>4</strong><span>weeks</span></div>
+    <div class="metric"><strong>10–20</strong><span>first reviews</span></div>
+  </div>
+</section>
+
+<section class="pricing-grid">
+  {% for package in pilot_packages %}
+    <article class="card pricing-card {% if loop.index == 1 %}featured{% endif %}">
+      <div class="pricing-head">
+        <span class="pill highlight">{{ package.badge }}</span>
+        <h2>{{ package.name }}</h2>
+        <p class="price">{{ package.price }}</p>
+        <p class="muted">{{ package.duration }} · {{ package.cases }}</p>
+        <p>{{ package.description }}</p>
+      </div>
+      <ul class="check-list">
+        {% for feature in package.features %}
+          <li>{{ feature }}</li>
+        {% endfor %}
+      </ul>
+      <a class="button full-button" href="/pilot">Request this pilot</a>
+    </article>
+  {% endfor %}
+</section>
+
+<section class="grid-two">
+  <article class="card">
+    <p class="eyebrow">Who it is for</p>
+    <h2>Best-fit teams</h2>
+    <ul class="check-list">
+      <li>Agencies and consultancies choosing tools for client or project data.</li>
+      <li>SMEs and startups without a formal procurement team.</li>
+      <li>Operations, finance, compliance, and founder-led teams comparing SaaS options.</li>
+      <li>Advisors who need a repeatable first-pass vendor risk workflow.</li>
+    </ul>
+  </article>
+  <article class="card">
+    <p class="eyebrow">What you get</p>
+    <h2>Decision-ready artifacts</h2>
+    <p class="muted">Each review creates a saved report with ranked scores, recommendation, evidence notes, critic-agent caveats, and due-diligence questions for the vendor.</p>
+    <div class="hero-actions compact">
+      <a class="button" href="/demo">See example output</a>
+      <a class="button secondary" href="/pilot">Send your use case</a>
+    </div>
+  </article>
+</section>
+{% endblock %}

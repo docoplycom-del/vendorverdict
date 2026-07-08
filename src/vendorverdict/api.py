@@ -235,6 +235,19 @@ def create_app(
                 "request": request,
                 "errors": [],
                 "values": _lead_default_values(source="pilot"),
+                "pilot_packages": _pilot_packages(),
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/pricing", response_class=HTMLResponse)
+    def pilot_pricing(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pricing.html",
+            {
+                "request": request,
+                "pilot_packages": _pilot_packages(),
                 "auth": _auth_context(request),
             },
         )
@@ -253,6 +266,7 @@ def create_app(
                     "request": request,
                     "errors": errors,
                     "values": values,
+                    "pilot_packages": _pilot_packages(),
                     "auth": _auth_context(request),
                 },
                 status_code=400,
@@ -576,7 +590,7 @@ def _env_bool(name: str, *, default: bool) -> bool:
 
 
 def _is_public_path(path: str) -> bool:
-    if path in {"/", "/demo", "/pilot", "/pilot/thanks", "/leads/request", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
+    if path in {"/", "/demo", "/pricing", "/pilot", "/pilot/thanks", "/leads/request", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
         return True
     if path.startswith("/static/"):
         return True
@@ -612,6 +626,56 @@ def _auth_context(request: Request) -> dict[str, Any]:
         "is_authenticated": bool(username),
     }
 
+
+
+def _pilot_packages() -> list[dict[str, Any]]:
+    return [
+        {
+            "name": "Founding pilot",
+            "price": "From £1,500",
+            "duration": "4 weeks",
+            "cases": "10–20 reviews",
+            "badge": "Best first step",
+            "description": "A focused pilot for one team choosing SaaS tools for client or business data.",
+            "features": [
+                "Guided setup call to define your review workflow",
+                "10–20 SaaS vendor reviews using real buying scenarios",
+                "PDF and Markdown reports for internal decision records",
+                "Due-diligence questions for the chosen vendors",
+                "End-of-pilot review session with recommended next steps",
+            ],
+        },
+        {
+            "name": "Team pilot",
+            "price": "From £3,000",
+            "duration": "4 weeks",
+            "cases": "20–40 reviews",
+            "badge": "For busier teams",
+            "description": "For teams that want to test VendorVerdict across multiple buying scenarios or departments.",
+            "features": [
+                "Everything in the founding pilot",
+                "More vendor reviews and saved procurement artifacts",
+                "Two review sessions for workflow calibration",
+                "Simple pilot summary with themes, gaps, and process recommendations",
+                "Support for refining the scoring rubric around your risk appetite",
+            ],
+        },
+        {
+            "name": "Advisor / agency pilot",
+            "price": "Custom",
+            "duration": "4–6 weeks",
+            "cases": "Client-facing workflow",
+            "badge": "For consultants",
+            "description": "For consultants, agencies, or advisors who want to use VendorVerdict with clients.",
+            "features": [
+                "Client-ready sample reports",
+                "Reusable due-diligence question packs",
+                "Workflow mapping for your advisory process",
+                "Optional white-label discussion",
+                "Commercial model review for ongoing usage",
+            ],
+        },
+    ]
 
 def _lead_default_values(*, source: str = "demo") -> dict[str, str]:
     return {

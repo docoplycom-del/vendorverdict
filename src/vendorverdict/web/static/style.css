@@ -414,3 +414,30 @@ html body .finding p {
   color: #cbd5e1 !important;
 }
 
+
+/* Pilot package / pricing page */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.pricing-card.featured {
+  border-color: rgba(40, 213, 255, 0.62);
+  box-shadow: 0 22px 50px rgba(40, 213, 255, 0.08);
+}
+.pricing-head { display: grid; gap: .55rem; }
+.price {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1;
+  margin: .2rem 0;
+  font-weight: 950;
+  color: var(--text);
+}
+.full-button { width: 100%; margin-top: auto; }
+@media (max-width: 1000px) { .pricing-grid { grid-template-columns: 1fr; } }
