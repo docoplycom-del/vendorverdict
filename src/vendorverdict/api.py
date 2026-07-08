@@ -23,7 +23,7 @@ from vendorverdict.auth import (
 )
 from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.lead_notifications import send_lead_notification
-from vendorverdict.leads import LeadStore
+from vendorverdict.leads import LEAD_STATUSES, LeadStore
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
@@ -580,15 +580,38 @@ def create_app(
 
     @app.get("/dashboard/leads", response_class=HTMLResponse)
     def dashboard_leads(request: Request) -> HTMLResponse:
-        leads = lead_store().list_leads(limit=100)
+        leads = lead_store()
         return TEMPLATES.TemplateResponse(
             request,
             "leads.html",
             {
                 "request": request,
-                "leads": leads,
+                "leads": leads.list_leads(limit=100),
+                "status_counts": leads.status_counts(),
+                "lead_statuses": LEAD_STATUSES,
                 "auth": _auth_context(request),
             },
+        )
+
+    @app.post("/dashboard/leads/{lead_id}/status")
+    async def update_dashboard_lead_status(request: Request, lead_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        updated = lead_store().update_lead_status(
+            lead_id,
+            status=form.get("status", "new"),
+            notes=form.get("notes", ""),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Lead not found: {lead_id}")
+        return RedirectResponse(url="/dashboard/leads", status_code=303)
+
+    @app.get("/dashboard/leads.csv")
+    def export_dashboard_leads_csv() -> PlainTextResponse:
+        csv_text = lead_store().export_csv(limit=2000)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-leads.csv"'},
         )
 
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)

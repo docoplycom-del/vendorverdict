@@ -760,7 +760,8 @@ sudo scripts/deploy_gcp_vm.sh
 
 ### Lead notifications
 
-VendorVerdict can notify you when someone submits the public demo or pilot form. Configure `VENDORVERDICT_LEAD_NOTIFY_ENABLED=1` and either `VENDORVERDICT_LEAD_WEBHOOK_URL` or reuse the existing monitor alert webhook. Notification status is stored with each lead and shown in `/dashboard/leads`. See `docs/LEAD_NOTIFICATIONS.md`.
+VendorVerdict can notify you when someone submits the public demo or pilot form. Configure `VENDORVERDICT_LEAD_NOTIFY_ENABLED=1` and either `VENDORVERDICT_LEAD_WEBHOOK_URL` or reuse the existing monitor alert webhook. Notification status is stored with each lead and shown in `/dashboard/leads`. See `docs/LEAD_NOTIFICATIONS.md
+- `docs/LEAD_MANAGEMENT.md``.
 
 
 - Contrast-hardened demo and lead capture forms with readable buttons, inputs, placeholders, and focus states.
@@ -769,3 +770,14 @@ VendorVerdict can notify you when someone submits the public demo or pilot form.
 ### Visual contrast hardening
 
 The public demo, pilot form, dashboard buttons, lead inbox, and report actions use a final high-contrast CSS override with cache-busting to keep button text, form input text, placeholders, and callout copy readable in production.
+
+### Lead management
+
+Pilot and demo leads can be tracked from the protected lead inbox:
+
+```text
+/dashboard/leads
+/dashboard/leads.csv
+```
+
+The inbox supports status updates (`new`, `contacted`, `qualified`, `won`, `lost`), internal notes, notification status, and CSV export. See `docs/LEAD_MANAGEMENT.md`.

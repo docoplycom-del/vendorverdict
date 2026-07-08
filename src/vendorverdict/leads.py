@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import os
 import sqlite3
 from contextlib import closing
@@ -10,6 +12,14 @@ from typing import Any
 from uuid import uuid4
 
 from vendorverdict.storage import default_db_path
+
+
+LEAD_STATUSES = ("new", "contacted", "qualified", "won", "lost")
+
+
+def normalize_lead_status(value: str) -> str:
+    normalized = (value or "").strip().lower().replace(" ", "_")
+    return normalized if normalized in LEAD_STATUSES else "new"
 
 
 @dataclass(frozen=True)
@@ -24,6 +34,7 @@ class LeadRecord:
     message: str
     source: str
     status: str
+    notes: str = ""
     notification_status: str = "not_sent"
     notified_at: str = ""
     notification_error: str = ""
@@ -41,6 +52,7 @@ class LeadRecord:
             "message": self.message,
             "source": self.source,
             "status": self.status,
+            "notes": self.notes,
             "notification_status": self.notification_status,
             "notified_at": self.notified_at,
             "notification_error": self.notification_error,
@@ -105,7 +117,7 @@ class LeadStore:
             rows = conn.execute(
                 """
                 SELECT id, created_at, name, email, company, use_case,
-                       vendors, message, source, status,
+                       vendors, message, source, status, notes,
                        notification_status, notified_at, notification_error
                 FROM lead_requests
                 ORDER BY created_at DESC
@@ -120,7 +132,7 @@ class LeadStore:
             row = conn.execute(
                 """
                 SELECT id, created_at, name, email, company, use_case,
-                       vendors, message, source, status,
+                       vendors, message, source, status, notes,
                        notification_status, notified_at, notification_error
                 FROM lead_requests
                 WHERE id = ?
@@ -142,6 +154,70 @@ class LeadStore:
             )
             conn.commit()
 
+    def update_lead_status(self, lead_id: str, *, status: str, notes: str | None = None) -> bool:
+        safe_status = normalize_lead_status(status)
+        with closing(self._connect()) as conn:
+            if notes is None:
+                cursor = conn.execute(
+                    "UPDATE lead_requests SET status = ? WHERE id = ?",
+                    (safe_status, lead_id),
+                )
+            else:
+                cursor = conn.execute(
+                    "UPDATE lead_requests SET status = ?, notes = ? WHERE id = ?",
+                    (safe_status, notes.strip(), lead_id),
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def status_counts(self) -> dict[str, int]:
+        counts = {status: 0 for status in LEAD_STATUSES}
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) AS count FROM lead_requests GROUP BY status"
+            ).fetchall()
+        for row in rows:
+            counts[normalize_lead_status(row["status"])] = int(row["count"] or 0)
+        return counts
+
+    def export_csv(self, limit: int = 500) -> str:
+        safe_limit = max(1, min(limit, 2000))
+        leads = self.list_leads(limit=safe_limit)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "created_at",
+            "name",
+            "email",
+            "company",
+            "vendors",
+            "use_case",
+            "message",
+            "source",
+            "status",
+            "notes",
+            "notification_status",
+            "notified_at",
+            "notification_error",
+        ])
+        for lead in leads:
+            writer.writerow([
+                lead.created_at,
+                lead.name,
+                lead.email,
+                lead.company,
+                lead.vendors,
+                lead.use_case,
+                lead.message,
+                lead.source,
+                lead.status,
+                lead.notes,
+                lead.notification_status,
+                lead.notified_at,
+                lead.notification_error,
+            ])
+        return output.getvalue()
+
     def _ensure_schema(self) -> None:
         with closing(self._connect()) as conn:
             conn.executescript(
@@ -157,6 +233,7 @@ class LeadStore:
                     message TEXT NOT NULL DEFAULT '',
                     source TEXT NOT NULL DEFAULT 'demo',
                     status TEXT NOT NULL DEFAULT 'new',
+                    notes TEXT NOT NULL DEFAULT '',
                     notification_status TEXT NOT NULL DEFAULT 'not_sent',
                     notified_at TEXT NOT NULL DEFAULT '',
                     notification_error TEXT NOT NULL DEFAULT ''
@@ -170,6 +247,7 @@ class LeadStore:
             )
             existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(lead_requests)").fetchall()}
             migrations = {
+                "notes": "ALTER TABLE lead_requests ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
                 "notification_status": "ALTER TABLE lead_requests ADD COLUMN notification_status TEXT NOT NULL DEFAULT 'not_sent'",
                 "notified_at": "ALTER TABLE lead_requests ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''",
                 "notification_error": "ALTER TABLE lead_requests ADD COLUMN notification_error TEXT NOT NULL DEFAULT ''",
@@ -196,7 +274,8 @@ class LeadStore:
             vendors=row["vendors"],
             message=row["message"],
             source=row["source"],
-            status=row["status"],
+            status=normalize_lead_status(row["status"]),
+            notes=row["notes"],
             notification_status=row["notification_status"],
             notified_at=row["notified_at"],
             notification_error=row["notification_error"],

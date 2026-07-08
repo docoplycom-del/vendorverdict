@@ -406,3 +406,8 @@ The production site exposes customer-facing trust pages:
 - `/disclaimer`
 
 These are public routes and are intended for pilot customers reviewing the product before submitting a request. Operational links such as `/docs` and `/health` remain available but are shown primarily to authenticated users.
+
+
+## Lead management
+
+The protected dashboard includes a lead inbox at `/dashboard/leads` and a CSV export at `/dashboard/leads.csv`. The database schema migrates automatically on app start/deploy, so existing lead requests are preserved while adding status and notes fields.

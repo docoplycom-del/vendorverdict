@@ -127,6 +127,54 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Enter a valid email address", response.text)
 
+    def test_lead_inbox_can_update_status_notes_and_export_csv(self) -> None:
+        response = self.client.post(
+            "/leads/request",
+            data={
+                "name": "Jordan Ops",
+                "email": "jordan@example.com",
+                "company": "Ops Co",
+                "vendors": "Slack, Teams",
+                "use_case": "internal collaboration",
+                "message": "Please follow up next week.",
+                "source": "pilot",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        inbox = self.client.get("/dashboard/leads")
+        self.assertEqual(inbox.status_code, 200)
+        self.assertIn("Jordan Ops", inbox.text)
+        self.assertIn("new", inbox.text)
+        self.assertIn("Export CSV", inbox.text)
+        self.assertIn("Add follow-up notes", inbox.text)
+
+        import re
+        match = re.search(r'action="(/dashboard/leads/[^"]+/status)"', inbox.text)
+        self.assertIsNotNone(match)
+
+        update = self.client.post(
+            match.group(1),
+            data={"status": "qualified", "notes": "Good fit for a founding pilot."},
+            follow_redirects=False,
+        )
+        self.assertEqual(update.status_code, 303)
+        self.assertEqual(update.headers["location"], "/dashboard/leads")
+
+        updated = self.client.get("/dashboard/leads")
+        self.assertEqual(updated.status_code, 200)
+        self.assertIn("qualified", updated.text)
+        self.assertIn("Good fit for a founding pilot.", updated.text)
+
+        csv_export = self.client.get("/dashboard/leads.csv")
+        self.assertEqual(csv_export.status_code, 200)
+        self.assertIn("text/csv", csv_export.headers["content-type"])
+        self.assertIn("vendorverdict-leads.csv", csv_export.headers["content-disposition"])
+        self.assertIn("Jordan Ops", csv_export.text)
+        self.assertIn("qualified", csv_export.text)
+        self.assertIn("Good fit for a founding pilot.", csv_export.text)
+
     def test_dashboard_can_run_sample_review(self) -> None:
         response = self.client.post("/reviews/sample", follow_redirects=False)
         self.assertEqual(response.status_code, 303)
@@ -233,7 +281,8 @@ class ContrastCssTests(unittest.TestCase):
         self.assertIn("html body .callout", css)
         self.assertIn(".site-footer", css)
         self.assertIn(".trust-strip", css)
+        self.assertIn(".lead-admin-form", css)
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-trust-polish", template)
+        self.assertIn("style.css?v=20260708-lead-management", template)

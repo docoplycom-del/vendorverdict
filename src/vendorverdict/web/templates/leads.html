@@ -6,27 +6,59 @@
     <div>
       <p class="eyebrow">Pilot requests</p>
       <h1>Lead inbox</h1>
-      <p class="muted">Saved requests from the public demo and pilot form.</p>
+      <p class="muted">Saved requests from the public demo and pilot form. Update status, add notes, and export the list for follow-up.</p>
     </div>
-    <a class="button secondary" href="/dashboard">Back to reports</a>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/leads.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard">Back to reports</a>
+    </div>
+  </div>
+
+  <div class="metric-grid lead-status-grid">
+    {% for status in lead_statuses %}
+      <div class="metric small-metric"><strong>{{ status_counts.get(status, 0) }}</strong><span>{{ status.replace('_', ' ') }}</span></div>
+    {% endfor %}
   </div>
 
   {% if leads %}
-    <div class="table-wrap">
+    <div class="table-wrap lead-table-wrap">
       <table>
         <thead>
-          <tr><th>Created</th><th>Name</th><th>Email</th><th>Company</th><th>Vendors</th><th>Use case</th><th>Source</th><th>Notify</th></tr>
+          <tr>
+            <th>Created</th>
+            <th>Lead</th>
+            <th>Request</th>
+            <th>Status & notes</th>
+            <th>Notify</th>
+          </tr>
         </thead>
         <tbody>
           {% for lead in leads %}
             <tr>
-              <td>{{ lead.created_at[:19].replace('T', ' ') }}</td>
-              <td><strong>{{ lead.name }}</strong></td>
-              <td><a href="mailto:{{ lead.email }}">{{ lead.email }}</a></td>
-              <td>{{ lead.company or '—' }}</td>
-              <td>{{ lead.vendors or '—' }}</td>
-              <td>{{ lead.use_case or lead.message or '—' }}</td>
-              <td>{{ lead.source }}</td>
+              <td>{{ lead.created_at[:19].replace('T', ' ') }}<br><span class="pill">{{ lead.source }}</span></td>
+              <td>
+                <strong>{{ lead.name }}</strong><br>
+                <a href="mailto:{{ lead.email }}">{{ lead.email }}</a><br>
+                <span class="muted">{{ lead.company or '—' }}</span>
+              </td>
+              <td>
+                <strong>Vendors:</strong> {{ lead.vendors or '—' }}<br>
+                <strong>Use case:</strong> {{ lead.use_case or '—' }}
+                {% if lead.message %}<br><strong>Message:</strong> {{ lead.message }}{% endif %}
+              </td>
+              <td>
+                <form class="inline-form lead-admin-form" method="post" action="/dashboard/leads/{{ lead.lead_id }}/status">
+                  <label class="sr-only" for="status-{{ lead.lead_id }}">Lead status</label>
+                  <select id="status-{{ lead.lead_id }}" name="status">
+                    {% for status in lead_statuses %}
+                      <option value="{{ status }}" {% if lead.status == status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>
+                    {% endfor %}
+                  </select>
+                  <label class="sr-only" for="notes-{{ lead.lead_id }}">Internal notes</label>
+                  <textarea id="notes-{{ lead.lead_id }}" name="notes" rows="2" placeholder="Add follow-up notes">{{ lead.notes }}</textarea>
+                  <button class="button secondary small-button" type="submit">Save</button>
+                </form>
+              </td>
               <td><span class="pill">{{ lead.notification_status }}</span>{% if lead.notification_error %}<br><small class="muted">{{ lead.notification_error }}</small>{% endif %}</td>
             </tr>
           {% endfor %}
