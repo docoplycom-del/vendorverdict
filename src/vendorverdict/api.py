@@ -33,11 +33,14 @@ from vendorverdict.proposals import (
     ProposalStore,
     build_proposal_email,
     build_proposal_mailto,
+    customer_next_step,
+    customer_success_criteria,
     render_proposal_markdown,
 )
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
+from vendorverdict.shares import ShareLink, ShareStore
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
@@ -205,6 +208,10 @@ def create_app(
     def proposal_store() -> ProposalStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return ProposalStore(env_db or app.state.default_db_path)
+
+    def share_store() -> ShareStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return ShareStore(env_db or app.state.default_db_path)
 
     def resolved_export_dir() -> Path:
         return Path(
@@ -887,6 +894,99 @@ def create_app(
             filename=path.name,
         )
 
+    @app.get("/share/report/{token}.md")
+    def shared_report_markdown(token: str) -> PlainTextResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="report")
+        report = _get_report_or_404(store(), share.resource_id)
+        shares.record_view(token)
+        return PlainTextResponse(
+            render_report_markdown(report),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-shared-report.md"'},
+        )
+
+    @app.get("/share/report/{token}.pdf")
+    def shared_report_pdf(token: str) -> FileResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="report")
+        _get_report_or_404(store(), share.resource_id)
+        shares.record_view(token)
+        path = export_report_pdf(share.resource_id, output_dir=resolved_export_dir(), store=store())
+        return FileResponse(path=str(path), media_type="application/pdf", filename=path.name)
+
+    @app.get("/share/report/{token}", response_class=HTMLResponse)
+    def shared_report_view(request: Request, token: str) -> HTMLResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="report")
+        report = _get_report_or_404(store(), share.resource_id)
+        shares.record_view(token)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "shared_report.html",
+            {
+                "request": request,
+                "share": share,
+                "report": report,
+                "scorecard": report.scores_json,
+                "findings": report.evidence_findings,
+                "sources": report.evidence_items,
+                "source_count": len(report.evidence_items),
+                "finding_count": len(report.evidence_findings),
+                "pdf_url": f"/share/report/{token}.pdf",
+                "markdown_url": f"/share/report/{token}.md",
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/share/proposal/{token}.md")
+    def shared_proposal_markdown(token: str) -> PlainTextResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="proposal")
+        proposal = proposal_store().get_proposal(share.resource_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Shared proposal not found")
+        shares.record_view(token)
+        return PlainTextResponse(
+            render_proposal_markdown(proposal),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-shared-proposal.md"'},
+        )
+
+    @app.get("/share/proposal/{token}.pdf")
+    def shared_proposal_pdf(token: str) -> FileResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="proposal")
+        proposal = proposal_store().get_proposal(share.resource_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Shared proposal not found")
+        shares.record_view(token)
+        path = export_proposal_pdf(share.resource_id, output_dir=resolved_export_dir(), store=proposal_store())
+        return FileResponse(path=str(path), media_type="application/pdf", filename=path.name)
+
+    @app.get("/share/proposal/{token}", response_class=HTMLResponse)
+    def shared_proposal_view(request: Request, token: str) -> HTMLResponse:
+        shares = share_store()
+        share = _get_share_or_404(shares, token, expected_type="proposal")
+        proposal = proposal_store().get_proposal(share.resource_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Shared proposal not found")
+        shares.record_view(token)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "shared_proposal.html",
+            {
+                "request": request,
+                "share": share,
+                "proposal": proposal,
+                "customer_success_criteria": customer_success_criteria(proposal.success_criteria),
+                "customer_next_step": customer_next_step(proposal.next_step),
+                "pdf_url": f"/share/proposal/{token}.pdf",
+                "markdown_url": f"/share/proposal/{token}.md",
+                "auth": _auth_context(request),
+            },
+        )
+
     @app.get("/dashboard/proposals/{proposal_id}", response_class=HTMLResponse)
     def dashboard_proposal_detail(request: Request, proposal_id: str) -> HTMLResponse:
         proposals = proposal_store()
@@ -900,6 +1000,7 @@ def create_app(
             outcome = build_pilot_outcome(pilot, pilots.list_tasks(pilot.pilot_id), pilots.list_reviews(pilot.pilot_id))
         email = build_proposal_email(proposal)
         mailto_link = build_proposal_mailto(proposal)
+        share = share_store().get_for_resource("proposal", proposal_id)
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -912,9 +1013,19 @@ def create_app(
                 "mailto_link": mailto_link,
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "proposal_packages": PROPOSAL_PACKAGES,
+                "share": share,
+                "share_url": _full_share_url(request, share, resource_type="proposal") if share else "",
                 "auth": _auth_context(request),
             },
         )
+
+    @app.post("/dashboard/proposals/{proposal_id}/share")
+    async def create_dashboard_proposal_share(proposal_id: str) -> RedirectResponse:
+        proposal = proposal_store().get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        share_store().create_or_get("proposal", proposal_id, label=proposal.company)
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
 
     @app.post("/dashboard/proposals/{proposal_id}/delivery")
     async def update_dashboard_proposal_delivery(request: Request, proposal_id: str) -> RedirectResponse:
@@ -1048,10 +1159,18 @@ def create_app(
             pilots.set_task_completed(pilot_id, "export_artifacts", True)
         return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
 
+    @app.post("/dashboard/reports/{report_id}/share")
+    async def create_dashboard_report_share(report_id: str) -> RedirectResponse:
+        report = _get_report_or_404(store(), report_id)
+        label = f"{' vs '.join(report.vendors)} · {report.use_case}"
+        share_store().create_or_get("report", report_id, label=label)
+        return RedirectResponse(url=f"/dashboard/reports/{report_id}", status_code=303)
+
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)
     def dashboard_report_detail(request: Request, report_id: str) -> HTMLResponse:
         report_store = store()
         report = _get_report_or_404(report_store, report_id)
+        share = share_store().get_for_resource("report", report_id)
         return TEMPLATES.TemplateResponse(
             request,
             "report.html",
@@ -1065,6 +1184,8 @@ def create_app(
                 "finding_count": len(report.evidence_findings),
                 "markdown_url": f"/reports/{report_id}/markdown",
                 "pdf_url": f"/reports/{report_id}/pdf",
+                "share": share,
+                "share_url": _full_share_url(request, share, resource_type="report") if share else "",
                 "auth": _auth_context(request),
             },
         )
@@ -1098,6 +1219,8 @@ def _is_public_path(path: str) -> bool:
     }:
         return True
     if path.startswith("/static/"):
+        return True
+    if path.startswith("/share/"):
         return True
     return False
 
@@ -1230,6 +1353,18 @@ def _get_report_or_404(store: ReportStore, report_id: str) -> ReportRecord:
     if report is None:
         raise HTTPException(status_code=404, detail=f"Report not found: {report_id}")
     return report
+
+
+def _get_share_or_404(store: ShareStore, token: str, *, expected_type: str) -> ShareLink:
+    share = store.get_share(token)
+    if share is None or share.resource_type != expected_type:
+        raise HTTPException(status_code=404, detail="Shared link not found or inactive")
+    return share
+
+
+def _full_share_url(request: Request, share: ShareLink, *, resource_type: str) -> str:
+    base = _public_base_url(request)
+    return f"{base}/share/{resource_type}/{share.token}"
 
 
 def _summary_to_dict(summary: ReportSummary) -> dict[str, Any]:

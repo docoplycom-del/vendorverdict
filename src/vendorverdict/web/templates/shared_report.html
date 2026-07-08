@@ -1,44 +1,18 @@
 {% extends "base.html" %}
-{% block title %}VendorVerdict Report{% endblock %}
+{% block title %}Shared VendorVerdict Report{% endblock %}
 {% block content %}
-<section class="card report-hero">
+<section class="card report-hero shared-hero">
   <div>
-    <p class="eyebrow">Report {{ report.report_id }}</p>
+    <p class="eyebrow">Shared customer report</p>
     <h1>{{ report.vendors|join(' vs ') }}</h1>
     <p class="lead">{{ report.use_case }}</p>
-    <p class="muted">Created {{ report.created_at }} · Confidence {{ report.overall_confidence }}</p>
+    <p class="muted">Prepared by VendorVerdict · Confidence {{ report.overall_confidence }}</p>
   </div>
   <div class="report-actions large">
     <span class="pill highlight">Recommendation: {{ report.recommended_vendor or 'Needs review' }}</span>
     <a class="button" href="{{ pdf_url }}">Download PDF</a>
     <a class="button secondary" href="{{ markdown_url }}">Markdown</a>
-    <a class="button secondary" href="/reports/{{ report.report_id }}">JSON</a>
   </div>
-</section>
-
-<section class="card share-card">
-  <div class="section-head inline">
-    <div>
-      <p class="eyebrow">Customer share link</p>
-      <h2>Share this report securely</h2>
-      <p class="muted">Create a tokenized public view for customers. The link shows the customer-safe report page and public PDF/Markdown downloads without exposing the admin dashboard.</p>
-    </div>
-    <form method="post" action="/dashboard/reports/{{ report.report_id }}/share" class="inline-form">
-      <button class="button" type="submit">{% if share %}Refresh share link{% else %}Create share link{% endif %}</button>
-    </form>
-  </div>
-  {% if share %}
-    <div class="share-link-box">
-      <label for="report-share-url">Share URL</label>
-      <input id="report-share-url" value="{{ share_url }}" readonly>
-      <div class="hero-actions compact">
-        <a class="button secondary" href="/share/report/{{ share.token }}" target="_blank" rel="noreferrer">Open shared page</a>
-        <a class="button secondary" href="/share/report/{{ share.token }}.pdf">Shared PDF</a>
-        <a class="button secondary" href="/share/report/{{ share.token }}.md">Shared Markdown</a>
-      </div>
-      <p class="muted">Views: {{ share.view_count }}{% if share.last_viewed_at %} · Last viewed {{ share.last_viewed_at[:19].replace('T', ' ') }}{% endif %}</p>
-    </div>
-  {% endif %}
 </section>
 
 <section class="metric-grid report-metrics">
@@ -61,7 +35,7 @@
             <td>{{ row.security }}</td>
             <td>{{ row.privacy }}</td>
             <td>{{ row.pricing_predictability }}</td>
-            <td>{{ row.portability }}</td>
+            <td>{{ row.lock_in or row.portability }}</td>
             <td>{{ row.sme_fit }}</td>
           </tr>
         {% endfor %}
@@ -71,20 +45,21 @@
   </div>
 
   <div class="card">
-    <h2>Multi-agent workflow</h2>
-    <ol class="steps">
-      {% for step in report.collaboration_steps %}
-        <li>{{ step }}</li>
-      {% endfor %}
-    </ol>
+    <h2>Decision summary</h2>
+    <p class="lead">VendorVerdict produces evidence-backed SaaS review records to support procurement and operational decisions.</p>
+    <ul class="check-list">
+      <li>Ranked recommendation with confidence level.</li>
+      <li>Evidence-backed findings and source snapshot.</li>
+      <li>Due-diligence questions and risk notes in the full report text.</li>
+    </ul>
   </div>
 </section>
 
 <section class="card">
   <div class="section-head inline">
     <div>
-      <p class="eyebrow">Citation-ready extraction</p>
-      <h2>Evidence-backed findings</h2>
+      <p class="eyebrow">Evidence-backed extraction</p>
+      <h2>Key findings</h2>
     </div>
     <span class="pill">Showing up to 12</span>
   </div>
@@ -93,7 +68,7 @@
       {% for finding in findings[:12] %}
         <article class="finding">
           <strong>{{ finding.get('label') or finding.get('finding_label') }}</strong>
-          <span>{{ finding.get('vendor') }} · {{ finding.get('category') }} · {{ finding.get('confidence') }} confidence</span>
+          <span>{{ finding.get('vendor') }} · {{ finding.get('confidence') }} confidence</span>
           <p>{{ finding.get('snippet') }}</p>
         </article>
       {% endfor %}
@@ -127,18 +102,12 @@
 </section>
 
 <section class="card">
-  <h2>Critic Agent notes</h2>
-  {% if report.critic_warnings %}
-    <ul>
-      {% for warning in report.critic_warnings %}<li>{{ warning }}</li>{% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">No critic warnings recorded.</p>
-  {% endif %}
+  <h2>Full report</h2>
+  <pre class="report-text">{{ report.report_text }}</pre>
 </section>
 
-<section class="card">
-  <h2>Full report text</h2>
-  <pre class="report-text">{{ report.report_text }}</pre>
+<section class="card compact-card">
+  <h2>Important note</h2>
+  <p class="muted">This shared VendorVerdict report is a procurement support document. It is not legal advice, financial advice, a formal security audit, or a binding recommendation unless separately agreed in writing.</p>
 </section>
 {% endblock %}

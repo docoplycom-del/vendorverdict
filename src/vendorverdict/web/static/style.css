@@ -767,3 +767,46 @@ html body button.button:not(.secondary) {
 .delivery-grid {
   margin-top: 1rem;
 }
+
+/* Customer share links */
+.share-card {
+  border-color: rgba(40, 213, 255, .26);
+}
+
+.share-link-box {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.share-link-box input[readonly] {
+  width: 100%;
+  background: #eef6ff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border-color: rgba(40, 213, 255, .55) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.shared-hero {
+  border-color: rgba(40, 213, 255, .22);
+}
+
+.customer-proposal-card .proposal-summary-table {
+  margin-top: 18px;
+}
+
+.proposal-text-block {
+  white-space: pre-wrap;
+  font-family: inherit;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px;
+  padding: 16px;
+  color: var(--text);
+}
+
+.next-step-card {
+  border-color: rgba(40, 213, 255, .32);
+  background: linear-gradient(135deg, rgba(40, 213, 255, .10), rgba(64, 224, 177, .08));
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Shared VendorVerdict Proposal{% endblock %}
+{% block content %}
+<section class="card customer-proposal-card shared-hero">
+  <p class="eyebrow">Shared customer proposal</p>
+  <h1>{{ proposal.company }}</h1>
+  <p class="lead">VendorVerdict customer proposal</p>
+  <div class="hero-actions compact">
+    <a class="button" href="{{ pdf_url }}">Download PDF</a>
+    <a class="button secondary" href="{{ markdown_url }}">Markdown</a>
+  </div>
+
+  <div class="table-wrap proposal-summary-table">
+    <table>
+      <tbody>
+        <tr><th>Package</th><td>{{ proposal.package_label }}</td></tr>
+        <tr><th>Proposed price</th><td>{{ proposal.proposed_price or 'To be agreed' }}</td></tr>
+        <tr><th>Billing</th><td>{{ proposal.billing or 'To be agreed' }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Proposed scope</h2>
+  <p>{{ proposal.scope or 'To be agreed.' }}</p>
+</section>
+
+<section class="card">
+  <h2>Success criteria</h2>
+  <pre class="proposal-text-block">{{ customer_success_criteria or 'To be agreed.' }}</pre>
+</section>
+
+<section class="card next-step-card">
+  <h2>Suggested next step</h2>
+  <p><strong>{{ customer_next_step }}</strong></p>
+</section>
+
+<section class="card">
+  <h2>Contact</h2>
+  <div class="table-wrap proposal-summary-table">
+    <table>
+      <tbody>
+        <tr><th>Contact</th><td>{{ proposal.contact_name }}</td></tr>
+        <tr><th>Email</th><td>{{ proposal.contact_email }}</td></tr>
+        <tr><th>Company</th><td>{{ proposal.company }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card compact-card">
+  <h2>Important note</h2>
+  <p class="muted">This VendorVerdict proposal is a commercial discussion document. It is not legal advice, financial advice, a formal security audit, or a binding contract unless separately agreed in writing.</p>
+</section>
+{% endblock %}

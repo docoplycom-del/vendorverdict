@@ -826,3 +826,8 @@ VendorVerdict now separates customer-facing proposal exports from internal propo
 Customer proposal exports now use cleaner sales wording for the suggested next step and success criteria. They avoid weak pilot-task wording such as "resolve the remaining pilot actions" and replace overly vendor-specific recommendation wording with a broader rollout discussion around recommended approach, evidence gaps, and priorities. See `docs/SALES_PROPOSAL_WORDING_POLISH.md`.
 
 - Proposal delivery tracking: send proposal email, mark sent, schedule follow-ups, and export delivery dates in the proposal CSV.
+
+
+### Customer share links
+
+Reports and proposals can now be shared with customers through tokenized public pages. Create links from `/dashboard/reports/{report_id}` or `/dashboard/proposals/{proposal_id}`. Public customer URLs use `/share/report/{token}` and `/share/proposal/{token}` with PDF/Markdown downloads, while internal notes and dashboard workflows remain protected. See `docs/CUSTOMER_SHARE_LINKS.md`.

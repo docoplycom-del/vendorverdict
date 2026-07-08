@@ -25,6 +25,31 @@
   </div>
 </section>
 
+<section class="card share-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Customer share link</p>
+      <h2>Share proposal with the customer</h2>
+      <p class="muted">Create a secure tokenized proposal page. The public page contains the customer proposal, PDF, and Markdown export only.</p>
+    </div>
+    <form method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/share" class="inline-form">
+      <button class="button" type="submit">{% if share %}Refresh share link{% else %}Create share link{% endif %}</button>
+    </form>
+  </div>
+  {% if share %}
+    <div class="share-link-box">
+      <label for="proposal-share-url">Share URL</label>
+      <input id="proposal-share-url" value="{{ share_url }}" readonly>
+      <div class="hero-actions compact">
+        <a class="button secondary" href="/share/proposal/{{ share.token }}" target="_blank" rel="noreferrer">Open shared page</a>
+        <a class="button secondary" href="/share/proposal/{{ share.token }}.pdf">Shared PDF</a>
+        <a class="button secondary" href="/share/proposal/{{ share.token }}.md">Shared Markdown</a>
+      </div>
+      <p class="muted">Views: {{ share.view_count }}{% if share.last_viewed_at %} · Last viewed {{ share.last_viewed_at[:19].replace('T', ' ') }}{% endif %}</p>
+    </div>
+  {% endif %}
+</section>
+
 <section class="grid-two lead-detail-grid">
   <article class="card compact-card followup-card delivery-card">
     <p class="eyebrow">Proposal delivery</p>

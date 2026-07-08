@@ -443,3 +443,19 @@ Commercial proposal PDF and Markdown exports are customer-facing. Internal propo
 ## Proposal delivery tracking
 
 The dashboard includes proposal delivery actions on `/dashboard/proposals/{proposal_id}`. Delivery state is stored in SQLite and included in `/dashboard/proposals.csv`.
+
+
+## Customer share links
+
+Customer share links are available after deployment. Authenticated users create them from protected report and proposal detail pages. Public tokenized routes are:
+
+```text
+/share/report/{token}
+/share/report/{token}.pdf
+/share/report/{token}.md
+/share/proposal/{token}
+/share/proposal/{token}.pdf
+/share/proposal/{token}.md
+```
+
+The `share_links` SQLite table migrates automatically and is covered by the existing backup workflow.
