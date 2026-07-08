@@ -1,5 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Sample VendorVerdict Report{% endblock %}
+{% block title %}Sample VendorVerdict Report
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
+</section>
+{% endblock %}
 {% block content %}
 <section class="card demo-banner">
   <div>
@@ -109,5 +118,14 @@
 <section class="card">
   <h2>Full sample report</h2>
   <pre class="report-text">{{ report_text }}</pre>
+</section>
+
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
 </section>
 {% endblock %}

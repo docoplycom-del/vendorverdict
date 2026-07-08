@@ -6,7 +6,7 @@
   <title>{% block title %}VendorVerdict{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/favicon.png">
-  <link rel="stylesheet" href="/static/style.css?v=20260708-visual-contrast-final">
+  <link rel="stylesheet" href="/static/style.css?v=20260708-trust-polish">
 </head>
 <body>
   <header class="topbar">
@@ -22,18 +22,19 @@
       <a href="/demo">Demo</a>
       <a href="/pricing">Pilot package</a>
       <a href="/pilot">Request pilot</a>
-      <a href="/dashboard">Reports</a>
-      <a href="/reviews/new">New review</a>
-      {% if auth and auth.is_authenticated %}<a href="/dashboard/leads">Leads</a>{% endif %}
-      <a href="/docs">API docs</a>
-      <a href="/health">Health</a>
-      {% if auth and auth.enabled %}
-        {% if auth.is_authenticated %}
-          <span class="nav-user">{{ auth.username }}</span>
-          <a href="/logout">Logout</a>
-        {% else %}
-          <a href="/login">Login</a>
-        {% endif %}
+      {% if auth and auth.is_authenticated %}
+        <a href="/dashboard">Reports</a>
+        <a href="/reviews/new">New review</a>
+        <a href="/dashboard/leads">Leads</a>
+        <a href="/docs">API docs</a>
+        <a href="/health">Health</a>
+        <span class="nav-user">{{ auth.username }}</span>
+        <a href="/logout">Logout</a>
+      {% elif auth and auth.enabled %}
+        <a href="/trust">Trust</a>
+        <a href="/login">Login</a>
+      {% else %}
+        <a href="/trust">Trust</a>
       {% endif %}
     </nav>
   </header>
@@ -41,5 +42,22 @@
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="site-footer">
+    <div>
+      <strong>VendorVerdict</strong>
+      <span>Evidence-backed SaaS procurement reports for pilot teams.</span>
+    </div>
+    <nav aria-label="Footer links">
+      <a href="/trust">Trust</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/disclaimer">Disclaimer</a>
+      <a href="/pricing">Pilot package</a>
+      {% if auth and auth.is_authenticated %}
+        <a href="/health">Health</a>
+        <a href="/docs">API docs</a>
+      {% endif %}
+    </nav>
+  </footer>
 </body>
 </html>

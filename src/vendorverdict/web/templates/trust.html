@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict Trust & Safety{% endblock %}
+{% block content %}
+<section class="hero card landing-hero">
+  <div>
+    <p class="eyebrow">Trust & safety</p>
+    <h1>Built for lightweight procurement decisions, not black-box approval.</h1>
+    <p class="lead">VendorVerdict is designed to help small teams make SaaS buying decisions with a clearer evidence trail, ranked risks, and follow-up questions before client or business data is stored in a tool.</p>
+    <div class="hero-actions">
+      <a class="button" href="/pricing">View pilot package</a>
+      <a class="button secondary" href="/privacy">Privacy notice</a>
+      <a class="button secondary" href="/disclaimer">Disclaimer</a>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>Auth</strong><span>protected dashboard</span></div>
+    <div class="metric"><strong>Backups</strong><span>nightly + pre-deploy</span></div>
+    <div class="metric"><strong>Audit</strong><span>saved reports</span></div>
+  </div>
+</section>
+
+<section class="grid-three polish-cards">
+  <article class="card">
+    <span class="feature-icon">1</span>
+    <h2>Evidence first</h2>
+    <p>Reports show the source assumptions used for each vendor, including official-source targets, fallback evidence, and live-check confidence where enabled.</p>
+  </article>
+  <article class="card">
+    <span class="feature-icon">2</span>
+    <h2>Human approval</h2>
+    <p>VendorVerdict does not automatically approve tools. It produces a procurement artifact for a human buyer, founder, consultant, or operator to review.</p>
+  </article>
+  <article class="card">
+    <span class="feature-icon">3</span>
+    <h2>Operational controls</h2>
+    <p>The production instance uses authentication, SQLite persistence, PDF/Markdown exports, backups, monitoring, and alert hooks.</p>
+  </article>
+</section>
+
+<section class="grid-two">
+  <div class="card">
+    <p class="eyebrow">What VendorVerdict stores</p>
+    <h2>Stored data</h2>
+    <ul class="check-list">
+      <li>Saved report inputs and generated report text.</li>
+      <li>Public lead form submissions such as name, email, company, vendors, and use case.</li>
+      <li>Operational metadata such as notification status and report export references.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p class="eyebrow">What to avoid</p>
+    <h2>Do not submit sensitive secrets</h2>
+    <ul class="check-list">
+      <li>No passwords, API keys, or private security documents.</li>
+      <li>No personal data beyond what is needed to request a pilot.</li>
+      <li>No confidential client data in a public demo request.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card landing-cta">
+  <div>
+    <p class="eyebrow">Pilot safety</p>
+    <h2>Start with representative use cases.</h2>
+    <p class="muted">The recommended pilot workflow is to test VendorVerdict with typical SaaS buying scenarios first, then decide what should become a repeatable procurement workflow.</p>
+  </div>
+  <a class="button" href="/pilot">Request pilot</a>
+</section>
+{% endblock %}

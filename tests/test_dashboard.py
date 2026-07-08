@@ -59,6 +59,29 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("From £1,500", response.text)
         self.assertIn("10–20", response.text)
 
+
+    def test_public_trust_privacy_and_disclaimer_pages_render(self) -> None:
+        trust = self.client.get("/trust")
+        self.assertEqual(trust.status_code, 200)
+        self.assertIn("Trust & safety", trust.text)
+        self.assertIn("Do not submit sensitive secrets", trust.text)
+
+        privacy = self.client.get("/privacy")
+        self.assertEqual(privacy.status_code, 200)
+        self.assertIn("VendorVerdict privacy notice", privacy.text)
+
+        disclaimer = self.client.get("/disclaimer")
+        self.assertEqual(disclaimer.status_code, 200)
+        self.assertIn("VendorVerdict disclaimer", disclaimer.text)
+
+    def test_public_navigation_keeps_admin_links_out_until_logged_in(self) -> None:
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Pilot package", response.text)
+        self.assertIn("Trust", response.text)
+        self.assertNotIn('href="/docs"', response.text)
+        self.assertNotIn('href="/health"', response.text)
+
     def test_public_pilot_request_form_renders(self) -> None:
         response = self.client.get("/pilot")
         self.assertEqual(response.status_code, 200)
@@ -208,7 +231,9 @@ class ContrastCssTests(unittest.TestCase):
         self.assertIn("html body .container a.button", css)
         self.assertIn("html body .form-card textarea", css)
         self.assertIn("html body .callout", css)
+        self.assertIn(".site-footer", css)
+        self.assertIn(".trust-strip", css)
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-visual-contrast-final", template)
+        self.assertIn("style.css?v=20260708-trust-polish", template)

@@ -441,3 +441,61 @@ html body .finding p {
 }
 .full-button { width: 100%; margin-top: auto; }
 @media (max-width: 1000px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+/* Trust, privacy, and final public polish */
+.site-footer {
+  max-width: 1200px;
+  margin: 2rem auto 0;
+  padding: 1.5rem 2rem 2.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.site-footer strong { color: var(--text); display: block; margin-bottom: .25rem; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: flex-end; }
+.site-footer a { color: var(--muted); text-decoration: none; font-weight: 700; }
+.site-footer a:hover { color: var(--accent-2); }
+.trust-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  margin: 1rem 0;
+  padding: 1rem 1.2rem;
+}
+.trust-strip span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(40,213,255,.28);
+  border-radius: 999px;
+  padding: .5rem .75rem;
+  background: rgba(40,213,255,.08);
+  color: #dbeafe;
+  font-weight: 800;
+  font-size: .9rem;
+}
+.trust-strip span::before {
+  content: "✓";
+  color: var(--ok);
+  margin-right: .45rem;
+  font-weight: 900;
+}
+.trust-strip a {
+  color: var(--accent-2) !important;
+  font-weight: 900;
+  text-decoration: none;
+}
+.legal-page {
+  max-width: 900px;
+  margin-inline: auto;
+}
+.legal-page h1 { margin-bottom: 1rem; }
+.legal-page h2 { margin-top: 1.7rem; }
+.legal-page p { color: var(--muted); line-height: 1.65; }
+@media (max-width: 760px) {
+  .site-footer { display: block; }
+  .site-footer nav { justify-content: flex-start; margin-top: 1rem; }
+}

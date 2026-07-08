@@ -1,5 +1,14 @@
 {% extends "base.html" %}
-{% block title %}VendorVerdict pilot package{% endblock %}
+{% block title %}VendorVerdict pilot package
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
+</section>
+{% endblock %}
 {% block content %}
 <section class="hero card landing-hero">
   <div>
@@ -58,5 +67,14 @@
       <a class="button secondary" href="/pilot">Send your use case</a>
     </div>
   </article>
+</section>
+
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
 </section>
 {% endblock %}

@@ -12,6 +12,17 @@ It is built for the Fetch.ai Innovation Lab / UK AI Agent Hack. The primary work
 ---
 
 
+
+## Trust, privacy, and disclaimer pages
+
+The production web app includes public trust pages for pilot customers:
+
+- `/trust` explains evidence-first reports, human approval, operational controls, and what not to submit.
+- `/privacy` explains what the pilot instance collects and how it is used.
+- `/disclaimer` clarifies that VendorVerdict is procurement decision support, not legal advice or a formal security audit.
+
+The public navigation is now focused on the customer journey, while operational links such as API docs and health remain available to authenticated users. See `docs/TRUST_PRIVACY_PAGES.md`.
+
 ## Pilot package
 
 The production web app includes a public pilot package page at `/pricing` and a request form at `/pilot`.

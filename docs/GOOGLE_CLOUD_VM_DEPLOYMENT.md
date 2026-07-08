@@ -396,3 +396,13 @@ VENDORVERDICT_LEAD_WEBHOOK_FORMAT=generic
 ```
 
 If `VENDORVERDICT_LEAD_WEBHOOK_URL` is blank, VendorVerdict reuses `VENDORVERDICT_ALERT_WEBHOOK_URL`.
+
+## Public trust pages
+
+The production site exposes customer-facing trust pages:
+
+- `/trust`
+- `/privacy`
+- `/disclaimer`
+
+These are public routes and are intended for pilot customers reviewing the product before submitting a request. Operational links such as `/docs` and `/health` remain available but are shown primarily to authenticated users.

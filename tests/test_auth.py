@@ -86,6 +86,17 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Request a pilot", response.text)
 
+    def test_trust_privacy_and_disclaimer_remain_public_when_auth_is_enabled(self) -> None:
+        for path, marker in [
+            ("/trust", "Trust & safety"),
+            ("/privacy", "privacy notice"),
+            ("/disclaimer", "disclaimer"),
+        ]:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(marker, response.text)
+
     def test_public_lead_submission_works_when_auth_is_enabled(self) -> None:
         response = self.client.post(
             "/leads/request",

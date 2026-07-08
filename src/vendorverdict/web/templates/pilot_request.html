@@ -1,5 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Request a VendorVerdict pilot{% endblock %}
+{% block title %}Request a VendorVerdict pilot
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
+</section>
+{% endblock %}
 {% block content %}
 <section class="hero card landing-hero">
   <div>
@@ -69,5 +78,14 @@
       <strong>Best for:</strong> agencies, consultancies, startup ops teams, and SMEs choosing SaaS tools for client or business data.
     </div>
   </aside>
+</section>
+
+<section class="trust-strip card">
+  <span>Decision-support only</span>
+  <span>No automatic approval</span>
+  <span>Do not submit secrets</span>
+  <a href="/trust">Trust</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/disclaimer">Disclaimer</a>
 </section>
 {% endblock %}

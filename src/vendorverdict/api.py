@@ -252,6 +252,39 @@ def create_app(
             },
         )
 
+    @app.get("/trust", response_class=HTMLResponse)
+    def trust_page(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "trust.html",
+            {
+                "request": request,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/privacy", response_class=HTMLResponse)
+    def privacy_page(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "privacy.html",
+            {
+                "request": request,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/disclaimer", response_class=HTMLResponse)
+    def disclaimer_page(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "disclaimer.html",
+            {
+                "request": request,
+                "auth": _auth_context(request),
+            },
+        )
+
     @app.post("/leads/request", response_class=HTMLResponse)
     async def submit_lead_request(request: Request) -> Any:
         form = _parse_urlencoded_form(await request.body())
@@ -590,7 +623,22 @@ def _env_bool(name: str, *, default: bool) -> bool:
 
 
 def _is_public_path(path: str) -> bool:
-    if path in {"/", "/demo", "/pricing", "/pilot", "/pilot/thanks", "/leads/request", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
+    if path in {
+        "/",
+        "/demo",
+        "/pricing",
+        "/pilot",
+        "/pilot/thanks",
+        "/trust",
+        "/privacy",
+        "/disclaimer",
+        "/leads/request",
+        "/health",
+        "/login",
+        "/logout",
+        "/favicon.ico",
+        "/favicon.png",
+    }:
         return True
     if path.startswith("/static/"):
         return True
