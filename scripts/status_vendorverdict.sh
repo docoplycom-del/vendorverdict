@@ -61,6 +61,16 @@ if [ -d "${VENDORVERDICT_ALERT_STATE_DIR:-/var/lib/vendorverdict/monitor}" ]; th
   sudo ls -la "${VENDORVERDICT_ALERT_STATE_DIR:-/var/lib/vendorverdict/monitor}" || true
 fi
 
+section "Lead notifications"
+printf 'Enabled: %s\n' "${VENDORVERDICT_LEAD_NOTIFY_ENABLED:-0}"
+printf 'Webhook configured: %s\n' "$([ -n "${VENDORVERDICT_LEAD_WEBHOOK_URL:-${VENDORVERDICT_ALERT_WEBHOOK_URL:-}}" ] && echo yes || echo no)"
+printf 'Webhook format: %s\n' "${VENDORVERDICT_LEAD_WEBHOOK_FORMAT:-${VENDORVERDICT_ALERT_WEBHOOK_FORMAT:-generic}}"
+printf 'Email recipient configured: %s\n' "$([ -n "${VENDORVERDICT_LEAD_EMAIL_TO:-}" ] && echo yes || echo no)"
+if command -v sqlite3 >/dev/null 2>&1 && [ -f "${DB_PATH}" ]; then
+  sqlite3 "${DB_PATH}" "SELECT status || ':' || COUNT(*) FROM lead_requests GROUP BY status;" 2>/dev/null || true
+  sqlite3 "${DB_PATH}" "SELECT notification_status || ':' || COUNT(*) FROM lead_requests GROUP BY notification_status;" 2>/dev/null || true
+fi
+
 section "Disk"
 df -h / /var/lib/vendorverdict /var/backups/vendorverdict 2>/dev/null || df -h
 

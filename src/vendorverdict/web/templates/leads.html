@@ -15,7 +15,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Created</th><th>Name</th><th>Email</th><th>Company</th><th>Vendors</th><th>Use case</th><th>Source</th></tr>
+          <tr><th>Created</th><th>Name</th><th>Email</th><th>Company</th><th>Vendors</th><th>Use case</th><th>Source</th><th>Notify</th></tr>
         </thead>
         <tbody>
           {% for lead in leads %}
@@ -27,6 +27,7 @@
               <td>{{ lead.vendors or '—' }}</td>
               <td>{{ lead.use_case or lead.message or '—' }}</td>
               <td>{{ lead.source }}</td>
+              <td><span class="pill">{{ lead.notification_status }}</span>{% if lead.notification_error %}<br><small class="muted">{{ lead.notification_error }}</small>{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>

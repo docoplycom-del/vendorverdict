@@ -22,6 +22,7 @@ from vendorverdict.auth import (
     set_session_cookie,
 )
 from vendorverdict.cli import DEMO_QUERY
+from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LeadStore
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
@@ -257,7 +258,8 @@ def create_app(
                 status_code=400,
             )
 
-        lead_id = lead_store().save_lead(
+        leads = lead_store()
+        lead_id = leads.save_lead(
             name=values["name"],
             email=values["email"],
             company=values["company"],
@@ -266,6 +268,10 @@ def create_app(
             message=values["message"],
             source=values["source"],
         )
+        lead = leads.get_lead(lead_id)
+        if lead is not None:
+            result = send_lead_notification(lead, app_base_url=_public_base_url(request))
+            leads.update_notification_status(lead_id, status=result.status, error=result.message)
         return RedirectResponse(url=f"/pilot/thanks?lead_id={quote(lead_id)}", status_code=303)
 
     @app.get("/pilot/thanks", response_class=HTMLResponse)
@@ -587,6 +593,13 @@ def _is_browser_route(request: Request) -> bool:
         return False
     path = request.url.path
     return path == "/" or path == "/docs" or path.startswith("/pilot") or path.startswith("/dashboard") or path.startswith("/reviews")
+
+
+def _public_base_url(request: Request) -> str:
+    configured = os.getenv("VENDORVERDICT_PUBLIC_URL", "").strip()
+    if configured:
+        return configured.rstrip("/")
+    return str(request.base_url).rstrip("/")
 
 
 def _auth_context(request: Request) -> dict[str, Any]:

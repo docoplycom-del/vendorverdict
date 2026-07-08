@@ -383,3 +383,16 @@ curl -i https://vendorverdict.docoply.com/demo
 ```
 
 The protected lead inbox is available at `/dashboard/leads`.
+
+## Lead notification configuration
+
+To alert you when a prospect submits the public demo or pilot form, add this to `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_LEAD_NOTIFY_ENABLED=1
+VENDORVERDICT_LEAD_NOTIFY_NAME=VendorVerdict lead capture
+VENDORVERDICT_LEAD_WEBHOOK_URL=
+VENDORVERDICT_LEAD_WEBHOOK_FORMAT=generic
+```
+
+If `VENDORVERDICT_LEAD_WEBHOOK_URL` is blank, VendorVerdict reuses `VENDORVERDICT_ALERT_WEBHOOK_URL`.

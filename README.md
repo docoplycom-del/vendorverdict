@@ -733,3 +733,8 @@ Use the safe production deploy script for this and future releases:
 cd /tmp/vendorverdict
 sudo scripts/deploy_gcp_vm.sh
 ```
+
+### Lead notifications
+
+VendorVerdict can notify you when someone submits the public demo or pilot form. Configure `VENDORVERDICT_LEAD_NOTIFY_ENABLED=1` and either `VENDORVERDICT_LEAD_WEBHOOK_URL` or reuse the existing monitor alert webhook. Notification status is stored with each lead and shown in `/dashboard/leads`. See `docs/LEAD_NOTIFICATIONS.md`.
+

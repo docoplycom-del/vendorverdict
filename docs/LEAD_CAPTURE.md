@@ -53,3 +53,7 @@ curl -i https://vendorverdict.docoply.com/demo
 ```
 
 A browser test should submit the form and then show the saved request inside `/dashboard/leads`.
+
+## Notifications
+
+Lead notification support is documented in `docs/LEAD_NOTIFICATIONS.md`. The public form saves the lead first, then attempts a best-effort webhook/email notification. Delivery failures do not block the visitor or delete the saved request.

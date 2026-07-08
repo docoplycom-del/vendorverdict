@@ -24,6 +24,9 @@ class LeadRecord:
     message: str
     source: str
     status: str
+    notification_status: str = "not_sent"
+    notified_at: str = ""
+    notification_error: str = ""
 
     def __getitem__(self, key: str) -> Any:
         mapping = {
@@ -38,6 +41,9 @@ class LeadRecord:
             "message": self.message,
             "source": self.source,
             "status": self.status,
+            "notification_status": self.notification_status,
+            "notified_at": self.notified_at,
+            "notification_error": self.notification_error,
         }
         return mapping[key]
 
@@ -99,7 +105,8 @@ class LeadStore:
             rows = conn.execute(
                 """
                 SELECT id, created_at, name, email, company, use_case,
-                       vendors, message, source, status
+                       vendors, message, source, status,
+                       notification_status, notified_at, notification_error
                 FROM lead_requests
                 ORDER BY created_at DESC
                 LIMIT ?
@@ -113,13 +120,27 @@ class LeadStore:
             row = conn.execute(
                 """
                 SELECT id, created_at, name, email, company, use_case,
-                       vendors, message, source, status
+                       vendors, message, source, status,
+                       notification_status, notified_at, notification_error
                 FROM lead_requests
                 WHERE id = ?
                 """,
                 (lead_id,),
             ).fetchone()
         return self._row_to_record(row) if row is not None else None
+
+    def update_notification_status(self, lead_id: str, *, status: str, error: str = "") -> None:
+        notified_at = datetime.now(UTC).isoformat() if status == "sent" else ""
+        with closing(self._connect()) as conn:
+            conn.execute(
+                """
+                UPDATE lead_requests
+                SET notification_status = ?, notified_at = ?, notification_error = ?
+                WHERE id = ?
+                """,
+                (status.strip() or "unknown", notified_at, error.strip(), lead_id),
+            )
+            conn.commit()
 
     def _ensure_schema(self) -> None:
         with closing(self._connect()) as conn:
@@ -135,7 +156,10 @@ class LeadStore:
                     vendors TEXT NOT NULL DEFAULT '',
                     message TEXT NOT NULL DEFAULT '',
                     source TEXT NOT NULL DEFAULT 'demo',
-                    status TEXT NOT NULL DEFAULT 'new'
+                    status TEXT NOT NULL DEFAULT 'new',
+                    notification_status TEXT NOT NULL DEFAULT 'not_sent',
+                    notified_at TEXT NOT NULL DEFAULT '',
+                    notification_error TEXT NOT NULL DEFAULT ''
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_lead_requests_created_at
@@ -144,6 +168,15 @@ class LeadStore:
                     ON lead_requests(email);
                 """
             )
+            existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(lead_requests)").fetchall()}
+            migrations = {
+                "notification_status": "ALTER TABLE lead_requests ADD COLUMN notification_status TEXT NOT NULL DEFAULT 'not_sent'",
+                "notified_at": "ALTER TABLE lead_requests ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''",
+                "notification_error": "ALTER TABLE lead_requests ADD COLUMN notification_error TEXT NOT NULL DEFAULT ''",
+            }
+            for column, statement in migrations.items():
+                if column not in existing_columns:
+                    conn.execute(statement)
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
@@ -164,4 +197,7 @@ class LeadStore:
             message=row["message"],
             source=row["source"],
             status=row["status"],
+            notification_status=row["notification_status"],
+            notified_at=row["notified_at"],
+            notification_error=row["notification_error"],
         )
