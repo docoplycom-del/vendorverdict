@@ -26,6 +26,50 @@
 </section>
 
 <section class="grid-two lead-detail-grid">
+  <article class="card compact-card followup-card delivery-card">
+    <p class="eyebrow">Proposal delivery</p>
+    <h2>Send and track follow-up</h2>
+    <p class="muted">Use the mailto link to send the customer proposal, then mark it as sent and schedule the next follow-up.</p>
+    <div class="hero-actions compact">
+      <a class="button" href="{{ mailto_link }}">Open proposal email</a>
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Download PDF</a>
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download Markdown</a>
+    </div>
+    <dl class="detail-list delivery-list">
+      <dt>Delivery state</dt><dd>{{ proposal.delivery_label }}</dd>
+      <dt>Sent at</dt><dd>{{ proposal.sent_at[:19].replace('T', ' ') if proposal.sent_at else 'Not sent yet' }}</dd>
+      <dt>Follow-up due</dt><dd>{% if proposal.follow_up_due %}{{ proposal.follow_up_due }}{% else %}Not scheduled{% endif %}</dd>
+      <dt>Last follow-up</dt><dd>{{ proposal.last_follow_up_at[:19].replace('T', ' ') if proposal.last_follow_up_at else '—' }}</dd>
+    </dl>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Delivery actions</p>
+    <h2>Update proposal tracking</h2>
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
+      <input type="hidden" name="action" value="mark_sent">
+      <label for="follow-up-sent">Next follow-up date after sending</label>
+      <input id="follow-up-sent" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <button class="button" type="submit">Mark proposal sent</button>
+    </form>
+
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
+      <input type="hidden" name="action" value="mark_followed_up">
+      <label for="follow-up-next">Next follow-up date</label>
+      <input id="follow-up-next" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <button class="button secondary" type="submit">Mark followed up</button>
+    </form>
+
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
+      <input type="hidden" name="action" value="schedule">
+      <label for="follow-up-schedule">Schedule / change follow-up date</label>
+      <input id="follow-up-schedule" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <button class="button secondary" type="submit">Save follow-up date</button>
+    </form>
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
   <article class="card compact-card">
     <p class="eyebrow">Proposal editor</p>
     <h2>Commercial terms</h2>
@@ -74,7 +118,7 @@
     <label for="proposal-email">Body</label>
     <textarea id="proposal-email" rows="18" readonly>{{ email.body }}</textarea>
     <div class="hero-actions compact">
-      <a class="button secondary" href="mailto:{{ proposal.contact_email }}">Open email client</a>
+      <a class="button secondary" href="{{ mailto_link }}">Open email client</a>
       <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Download customer PDF</a>
       <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download customer Markdown</a>
     </div>

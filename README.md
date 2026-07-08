@@ -824,3 +824,5 @@ VendorVerdict now separates customer-facing proposal exports from internal propo
 ### Sales proposal wording polish
 
 Customer proposal exports now use cleaner sales wording for the suggested next step and success criteria. They avoid weak pilot-task wording such as "resolve the remaining pilot actions" and replace overly vendor-specific recommendation wording with a broader rollout discussion around recommended approach, evidence gaps, and priorities. See `docs/SALES_PROPOSAL_WORDING_POLISH.md`.
+
+- Proposal delivery tracking: send proposal email, mark sent, schedule follow-ups, and export delivery dates in the proposal CSV.

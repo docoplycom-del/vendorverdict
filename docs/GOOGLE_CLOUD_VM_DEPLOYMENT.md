@@ -439,3 +439,7 @@ The protected dashboard includes `/dashboard/proposals`, `/dashboard/proposals.c
 ## Customer proposal polish
 
 Commercial proposal PDF and Markdown exports are customer-facing. Internal proposal notes, statuses, pilot IDs, and follow-up drafts remain on the protected dashboard.
+
+## Proposal delivery tracking
+
+The dashboard includes proposal delivery actions on `/dashboard/proposals/{proposal_id}`. Delivery state is stored in SQLite and included in `/dashboard/proposals.csv`.

@@ -290,6 +290,8 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Pilot Co", proposal_detail.text)
         self.assertIn("Save proposal", proposal_detail.text)
         self.assertIn("Download customer PDF", proposal_detail.text)
+        self.assertIn("Proposal delivery", proposal_detail.text)
+        self.assertIn("Open proposal email", proposal_detail.text)
 
         proposal_update = self.client.post(
             proposal_create.headers["location"] + "/update",
@@ -313,6 +315,19 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("£750/month", updated_proposal.text)
         self.assertIn("Sent to buyer.", updated_proposal.text)
 
+        delivery_update = self.client.post(
+            proposal_create.headers["location"] + "/delivery",
+            data={"action": "mark_sent", "follow_up_due": "2026-07-15"},
+            follow_redirects=False,
+        )
+        self.assertEqual(delivery_update.status_code, 303)
+        self.assertEqual(delivery_update.headers["location"], proposal_create.headers["location"])
+
+        delivered_proposal = self.client.get(proposal_create.headers["location"])
+        self.assertEqual(delivered_proposal.status_code, 200)
+        self.assertIn("follow-up due 2026-07-15", delivered_proposal.text)
+        self.assertIn("Mark followed up", delivered_proposal.text)
+
         proposal_md = self.client.get(proposal_create.headers["location"] + ".md")
         self.assertEqual(proposal_md.status_code, 200)
         self.assertIn("text/markdown", proposal_md.headers["content-type"])
@@ -328,11 +343,14 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Pilot Co", proposals.text)
         self.assertIn("Open proposal", proposals.text)
         self.assertIn("PDF", proposals.text)
+        self.assertIn("follow-up due", proposals.text)
 
         proposals_csv = self.client.get("/dashboard/proposals.csv")
         self.assertEqual(proposals_csv.status_code, 200)
         self.assertIn("text/csv", proposals_csv.headers["content-type"])
         self.assertIn("Pilot Co", proposals_csv.text)
+        self.assertIn("follow_up_due", proposals_csv.text)
+        self.assertIn("2026-07-15", proposals_csv.text)
 
         complete = self.client.post(convert.headers["location"] + "/complete", follow_redirects=False)
         self.assertEqual(complete.status_code, 303)
@@ -467,4 +485,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-customer-proposal-polish", template)
+        self.assertIn("style.css?v=20260708-proposal-delivery-tracking", template)

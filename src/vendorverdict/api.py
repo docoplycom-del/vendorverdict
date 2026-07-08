@@ -32,6 +32,7 @@ from vendorverdict.proposals import (
     PROPOSAL_STATUSES,
     ProposalStore,
     build_proposal_email,
+    build_proposal_mailto,
     render_proposal_markdown,
 )
 from vendorverdict.pdf_export import export_report_pdf
@@ -847,6 +848,7 @@ def create_app(
                 "request": request,
                 "proposals": proposals.list_proposals(limit=100),
                 "status_counts": proposals.status_counts(),
+                "delivery_counts": proposals.delivery_counts(),
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "auth": _auth_context(request),
             },
@@ -897,6 +899,7 @@ def create_app(
         if pilot is not None:
             outcome = build_pilot_outcome(pilot, pilots.list_tasks(pilot.pilot_id), pilots.list_reviews(pilot.pilot_id))
         email = build_proposal_email(proposal)
+        mailto_link = build_proposal_mailto(proposal)
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -906,11 +909,28 @@ def create_app(
                 "pilot": pilot,
                 "outcome": outcome,
                 "email": email,
+                "mailto_link": mailto_link,
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "proposal_packages": PROPOSAL_PACKAGES,
                 "auth": _auth_context(request),
             },
         )
+
+    @app.post("/dashboard/proposals/{proposal_id}/delivery")
+    async def update_dashboard_proposal_delivery(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        action = form.get("action", "schedule")
+        follow_up_due = form.get("follow_up_due", "")
+        proposals = proposal_store()
+        if action == "mark_sent":
+            updated = proposals.mark_sent(proposal_id, follow_up_due=follow_up_due)
+        elif action == "mark_followed_up":
+            updated = proposals.mark_followed_up(proposal_id, follow_up_due=follow_up_due)
+        else:
+            updated = proposals.schedule_follow_up(proposal_id, follow_up_due=follow_up_due)
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
 
     @app.post("/dashboard/proposals/{proposal_id}/update")
     async def update_dashboard_proposal(request: Request, proposal_id: str) -> RedirectResponse:

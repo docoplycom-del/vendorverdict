@@ -742,3 +742,28 @@ html body button.button:not(.secondary) {
   opacity: 1;
   cursor: text;
 }
+
+/* Proposal delivery tracking */
+.delivery-card .hero-actions,
+.delivery-form {
+  margin-top: 1rem;
+}
+
+.delivery-form + .delivery-form {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 1rem;
+}
+
+.delivery-list dd {
+  word-break: break-word;
+}
+
+.pill.warning {
+  background: rgba(250, 204, 21, 0.16);
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.4);
+}
+
+.delivery-grid {
+  margin-top: 1rem;
+}

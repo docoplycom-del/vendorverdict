@@ -11,6 +11,7 @@ from vendorverdict.proposal_pdf import export_proposal_pdf, format_proposal_date
 from vendorverdict.proposals import (
     ProposalStore,
     build_proposal_email,
+    build_proposal_mailto,
     normalize_proposal_package,
     normalize_proposal_status,
     customer_next_step,
@@ -71,6 +72,10 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertEqual(proposal.company, "Proposal Co")
         self.assertEqual(proposal.package, "team")
         self.assertEqual(proposal.status, "draft")
+        self.assertEqual(proposal.sent_at, "")
+        self.assertEqual(proposal.follow_up_due, "")
+        self.assertEqual(proposal.last_follow_up_at, "")
+        self.assertEqual(proposal.delivery_label, "not sent")
         self.assertIn("£1,000", proposal.proposed_price)
         self.assertNotIn("1/2 reviews", proposal.success_criteria)
         self.assertIn("up to 2 recurring SaaS review decisions", proposal.success_criteria)
@@ -99,11 +104,30 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertEqual(updated.status, "sent")
         self.assertEqual(self.proposals.status_counts()["sent"], 1)
 
-        email = build_proposal_email(updated)
+        self.assertTrue(self.proposals.mark_sent(proposal_id, follow_up_due="2026-07-15"))
+        delivered = self.proposals.get_proposal(proposal_id)
+        self.assertIsNotNone(delivered)
+        self.assertEqual(delivered.status, "sent")
+        self.assertTrue(delivered.sent_at)
+        self.assertEqual(delivered.follow_up_due, "2026-07-15")
+        self.assertIn("follow-up due 2026-07-15", delivered.delivery_label)
+
+        self.assertTrue(self.proposals.mark_followed_up(proposal_id, follow_up_due="2026-07-22"))
+        followed = self.proposals.get_proposal(proposal_id)
+        self.assertIsNotNone(followed)
+        self.assertTrue(followed.last_follow_up_at)
+        self.assertEqual(followed.follow_up_due, "2026-07-22")
+        delivery_counts = self.proposals.delivery_counts()
+        self.assertEqual(delivery_counts["sent"], 1)
+
+        email = build_proposal_email(followed)
         self.assertIn("VendorVerdict next step", email.subject)
         self.assertIn("£1,250/month", email.body)
+        mailto = build_proposal_mailto(followed)
+        self.assertIn("mailto:morgan%40example.com", mailto)
+        self.assertIn("VendorVerdict%20next%20step", mailto)
 
-        markdown = render_proposal_markdown(updated)
+        markdown = render_proposal_markdown(followed)
         self.assertIn("VendorVerdict proposal", markdown)
         self.assertIn("Recurring vendor reviews", markdown)
         self.assertNotIn("Follow-up email draft", markdown)
@@ -128,6 +152,8 @@ class CommercialProposalTests(unittest.TestCase):
         csv_text = self.proposals.export_csv()
         self.assertIn("Proposal Co", csv_text)
         self.assertIn("£1,250/month", csv_text)
+        self.assertIn("sent_at,follow_up_due,last_follow_up_at", csv_text)
+        self.assertIn("2026-07-22", csv_text)
 
 
 if __name__ == "__main__":

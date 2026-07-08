@@ -6,7 +6,7 @@
     <div>
       <p class="eyebrow">Commercial close</p>
       <h1>Commercial proposals</h1>
-      <p class="muted">Turn completed pilots into draft follow-up proposals, renewal emails, and next-step records.</p>
+      <p class="muted">Turn completed pilots into customer proposals, send follow-ups, and track next commercial actions.</p>
     </div>
     <div class="hero-actions compact">
       <a class="button secondary" href="/dashboard/proposals.csv">Export CSV</a>
@@ -20,6 +20,14 @@
     {% endfor %}
   </div>
 
+  <div class="metric-grid lead-status-grid delivery-grid">
+    <div class="metric small-metric"><strong>{{ delivery_counts.get('not_sent', 0) }}</strong><span>not sent</span></div>
+    <div class="metric small-metric"><strong>{{ delivery_counts.get('sent', 0) }}</strong><span>sent / active</span></div>
+    <div class="metric small-metric"><strong>{{ delivery_counts.get('follow_up_due', 0) }}</strong><span>follow-up due</span></div>
+    <div class="metric small-metric"><strong>{{ delivery_counts.get('accepted', 0) }}</strong><span>accepted</span></div>
+    <div class="metric small-metric"><strong>{{ delivery_counts.get('lost', 0) }}</strong><span>lost</span></div>
+  </div>
+
   {% if proposals %}
     <div class="report-list proposal-list">
       {% for proposal in proposals %}
@@ -29,9 +37,11 @@
             <h3>{{ proposal.company }}</h3>
             <p>{{ proposal.proposed_price }}</p>
             <p class="muted">Contact: {{ proposal.contact_name }} · {{ proposal.contact_email }}</p>
+            <p class="muted">Delivery: {{ proposal.delivery_label }}</p>
           </div>
           <div class="report-actions">
             <span class="pill highlight">{{ proposal.status }}</span>
+            {% if proposal.is_follow_up_due %}<span class="pill warning">follow-up due</span>{% endif %}
             <span class="pill">{{ proposal.package }}</span>
             <a class="button secondary small-button" href="/dashboard/pilots/{{ proposal.pilot_id }}/outcome">Outcome</a>
             <a class="button secondary small-button" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Customer PDF</a>

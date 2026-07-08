@@ -7,6 +7,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from urllib.parse import quote
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -84,6 +85,9 @@ class ProposalRecord:
     success_criteria: str
     next_step: str
     notes: str = ""
+    sent_at: str = ""
+    follow_up_due: str = ""
+    last_follow_up_at: str = ""
 
     def __getitem__(self, key: str) -> Any:
         mapping = {
@@ -103,7 +107,12 @@ class ProposalRecord:
             "success_criteria": self.success_criteria,
             "next_step": self.next_step,
             "notes": self.notes,
+            "sent_at": self.sent_at,
+            "follow_up_due": self.follow_up_due,
+            "last_follow_up_at": self.last_follow_up_at,
             "package_label": self.package_label,
+            "delivery_label": self.delivery_label,
+            "is_follow_up_due": self.is_follow_up_due,
         }
         return mapping[key]
 
@@ -116,6 +125,25 @@ class ProposalRecord:
     @property
     def package_label(self) -> str:
         return PACKAGE_DEFAULTS.get(self.package, PACKAGE_DEFAULTS["custom"])["label"]
+
+    @property
+    def delivery_label(self) -> str:
+        if self.status == "sent" and self.sent_at:
+            if self.follow_up_due:
+                return f"sent · follow-up due {self.follow_up_due}"
+            return "sent · follow-up not scheduled"
+        if self.last_follow_up_at:
+            return f"followed up {self.last_follow_up_at[:10]}"
+        if self.follow_up_due:
+            return f"follow-up due {self.follow_up_due}"
+        return "not sent"
+
+    @property
+    def is_follow_up_due(self) -> bool:
+        if not self.follow_up_due or self.status in {"accepted", "lost"}:
+            return False
+        today = datetime.now(UTC).date().isoformat()
+        return self.follow_up_due <= today
 
 
 @dataclass(frozen=True)
@@ -153,8 +181,9 @@ class ProposalStore:
                 """
                 INSERT INTO proposals (
                     id, created_at, updated_at, pilot_id, company, contact_name, contact_email,
-                    package, status, proposed_price, billing, scope, success_criteria, next_step, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    package, status, proposed_price, billing, scope, success_criteria, next_step, notes,
+                    sent_at, follow_up_due, last_follow_up_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     proposal_id,
@@ -171,6 +200,9 @@ class ProposalStore:
                     defaults["scope"],
                     success_criteria,
                     next_step,
+                    "",
+                    "",
+                    "",
                     "",
                 ),
             )
@@ -239,6 +271,60 @@ class ProposalStore:
             conn.commit()
             return cursor.rowcount > 0
 
+    def mark_sent(self, proposal_id: str, *, follow_up_due: str = "") -> bool:
+        now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE proposals
+                SET updated_at = ?, status = 'sent', sent_at = ?, follow_up_due = ?
+                WHERE id = ?
+                """,
+                (now, now, _date_value(follow_up_due), proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def schedule_follow_up(self, proposal_id: str, *, follow_up_due: str) -> bool:
+        now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                "UPDATE proposals SET updated_at = ?, follow_up_due = ? WHERE id = ?",
+                (now, _date_value(follow_up_due), proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def mark_followed_up(self, proposal_id: str, *, follow_up_due: str = "") -> bool:
+        now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE proposals
+                SET updated_at = ?, status = CASE WHEN status = 'draft' THEN 'sent' ELSE status END,
+                    last_follow_up_at = ?, follow_up_due = ?
+                WHERE id = ?
+                """,
+                (now, now, _date_value(follow_up_due), proposal_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def delivery_counts(self) -> dict[str, int]:
+        counts = {"not_sent": 0, "sent": 0, "follow_up_due": 0, "accepted": 0, "lost": 0}
+        for proposal in self.list_proposals(limit=2000):
+            if proposal.status == "accepted":
+                counts["accepted"] += 1
+            elif proposal.status == "lost":
+                counts["lost"] += 1
+            elif proposal.is_follow_up_due:
+                counts["follow_up_due"] += 1
+            elif proposal.sent_at or proposal.status in {"sent", "negotiation"}:
+                counts["sent"] += 1
+            else:
+                counts["not_sent"] += 1
+        return counts
+
     def status_counts(self) -> dict[str, int]:
         counts = {status: 0 for status in PROPOSAL_STATUSES}
         with closing(self._connect()) as conn:
@@ -253,7 +339,7 @@ class ProposalStore:
         writer.writerow([
             "created_at", "updated_at", "company", "contact_name", "contact_email", "pilot_id",
             "package", "status", "proposed_price", "billing", "scope", "success_criteria",
-            "next_step", "notes",
+            "next_step", "notes", "sent_at", "follow_up_due", "last_follow_up_at",
         ])
         for proposal in self.list_proposals(limit=limit):
             writer.writerow([
@@ -271,6 +357,9 @@ class ProposalStore:
                 proposal.success_criteria,
                 proposal.next_step,
                 proposal.notes,
+                proposal.sent_at,
+                proposal.follow_up_due,
+                proposal.last_follow_up_at,
             ])
         return output.getvalue()
 
@@ -293,13 +382,25 @@ class ProposalStore:
                     scope TEXT NOT NULL DEFAULT '',
                     success_criteria TEXT NOT NULL DEFAULT '',
                     next_step TEXT NOT NULL DEFAULT '',
-                    notes TEXT NOT NULL DEFAULT ''
+                    notes TEXT NOT NULL DEFAULT '',
+                    sent_at TEXT NOT NULL DEFAULT '',
+                    follow_up_due TEXT NOT NULL DEFAULT '',
+                    last_follow_up_at TEXT NOT NULL DEFAULT ''
                 );
                 CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON proposals(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_proposals_pilot_id ON proposals(pilot_id);
                 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
                 """
             )
+            existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(proposals)").fetchall()}
+            migrations = {
+                "sent_at": "ALTER TABLE proposals ADD COLUMN sent_at TEXT NOT NULL DEFAULT ''",
+                "follow_up_due": "ALTER TABLE proposals ADD COLUMN follow_up_due TEXT NOT NULL DEFAULT ''",
+                "last_follow_up_at": "ALTER TABLE proposals ADD COLUMN last_follow_up_at TEXT NOT NULL DEFAULT ''",
+            }
+            for column, statement in migrations.items():
+                if column not in existing_columns:
+                    conn.execute(statement)
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
@@ -325,6 +426,9 @@ class ProposalStore:
             success_criteria=row["success_criteria"] or "",
             next_step=row["next_step"] or "",
             notes=row["notes"] or "",
+            sent_at=row["sent_at"] or "",
+            follow_up_due=row["follow_up_due"] or "",
+            last_follow_up_at=row["last_follow_up_at"] or "",
         )
 
 
@@ -345,6 +449,26 @@ def build_proposal_email(proposal: ProposalRecord) -> ProposalEmail:
         "Vladimir"
     )
     return ProposalEmail(subject=subject, body=body)
+
+
+def build_proposal_mailto(proposal: ProposalRecord) -> str:
+    email = build_proposal_email(proposal)
+    recipient = quote(proposal.contact_email.strip())
+    subject = quote(email.subject)
+    body = quote(email.body)
+    return f"mailto:{recipient}?subject={subject}&body={body}"
+
+
+def _date_value(value: str) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return ""
+    # Browser date inputs submit YYYY-MM-DD. Keep only safe date-like values.
+    try:
+        datetime.fromisoformat(cleaned)
+        return cleaned[:10]
+    except ValueError:
+        return ""
 
 
 def render_proposal_markdown(proposal: ProposalRecord) -> str:
