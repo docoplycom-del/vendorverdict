@@ -26,6 +26,7 @@ from vendorverdict.lead_followups import build_lead_followup_templates
 from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
 from vendorverdict.pilots import PILOT_PACKAGES, PILOT_STATUSES, PilotStore
+from vendorverdict.pilot_outcomes import build_pilot_outcome, render_pilot_outcome_markdown
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
@@ -750,6 +751,64 @@ def create_app(
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="vendorverdict-pilot-reviews.csv"'},
         )
+
+    @app.get("/dashboard/pilots/{pilot_id}/outcome", response_class=HTMLResponse)
+    def dashboard_pilot_outcome(request: Request, pilot_id: str) -> HTMLResponse:
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        outcome = build_pilot_outcome(
+            pilot,
+            pilots.list_tasks(pilot_id),
+            pilots.list_reviews(pilot_id),
+        )
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pilot_outcome.html",
+            {
+                "request": request,
+                "pilot": pilot,
+                "outcome": outcome,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/pilots/{pilot_id}/outcome.md")
+    def export_dashboard_pilot_outcome_markdown(pilot_id: str) -> PlainTextResponse:
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        outcome = build_pilot_outcome(
+            pilot,
+            pilots.list_tasks(pilot_id),
+            pilots.list_reviews(pilot_id),
+        )
+        return PlainTextResponse(
+            render_pilot_outcome_markdown(outcome),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-pilot-outcome.md"'},
+        )
+
+    @app.post("/dashboard/pilots/{pilot_id}/complete")
+    async def complete_dashboard_pilot(pilot_id: str) -> RedirectResponse:
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        pilots.update_pilot(
+            pilot_id,
+            status="completed",
+            package=pilot.package,
+            objective=pilot.objective,
+            review_target=pilot.review_target,
+            start_date=pilot.start_date,
+            end_date=pilot.end_date,
+            notes=pilot.notes,
+        )
+        pilots.set_task_completed(pilot_id, "final_review", True)
+        return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}/outcome", status_code=303)
 
     @app.post("/dashboard/pilots/{pilot_id}/reviews/run", response_class=HTMLResponse)
     async def run_dashboard_pilot_review(request: Request, pilot_id: str):

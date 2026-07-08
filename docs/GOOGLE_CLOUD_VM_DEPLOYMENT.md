@@ -424,3 +424,7 @@ After deployment, pilot workspaces are available at `/dashboard/pilots`. See `do
 ## Pilot review delivery
 
 After deployment, authenticated users can open `/dashboard/pilots`, select a pilot workspace, and run saved vendor reviews directly from that workspace. Each review is linked to the pilot, and Markdown/PDF exports are available from the linked report.
+
+## Pilot outcome reporting
+
+- `/dashboard/pilots/{pilot_id}/outcome` — protected pilot close-out summary and Markdown export.

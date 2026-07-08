@@ -142,6 +142,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertTrue(response.headers["location"].startswith("/login"))
 
+    def test_dashboard_pilot_outcome_requires_authentication(self) -> None:
+        response = self.client.get("/dashboard/pilots/example-pilot-id/outcome", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/login"))
+
     def test_login_rejects_invalid_password(self) -> None:
         response = self.client.post(
             "/login",

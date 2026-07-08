@@ -715,3 +715,30 @@ html body button.button:not(.secondary) {
   flex-wrap: wrap;
   gap: .4rem;
 }
+
+/* Pilot outcome close-out page */
+.outcome-hero .hero-actions form {
+  margin: 0;
+}
+
+.check-list,
+.number-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.check-list li,
+.number-list li {
+  margin: .5rem 0;
+  color: var(--text);
+}
+
+.warning-list li {
+  color: var(--text);
+}
+
+.followup-card input[readonly],
+.followup-card textarea[readonly] {
+  opacity: 1;
+  cursor: text;
+}

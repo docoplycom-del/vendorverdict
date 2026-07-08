@@ -268,6 +268,21 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("text/csv", reviews_csv.headers["content-type"])
         self.assertIn("Client data shortlist", reviews_csv.text)
 
+        outcome = self.client.get(convert.headers["location"] + "/outcome")
+        self.assertEqual(outcome.status_code, 200)
+        self.assertIn("Pilot outcome", outcome.text)
+        self.assertIn("Client data shortlist", outcome.text)
+        self.assertIn("Download Markdown", outcome.text)
+
+        outcome_md = self.client.get(convert.headers["location"] + "/outcome.md")
+        self.assertEqual(outcome_md.status_code, 200)
+        self.assertIn("text/markdown", outcome_md.headers["content-type"])
+        self.assertIn("VendorVerdict pilot outcome", outcome_md.text)
+
+        complete = self.client.post(convert.headers["location"] + "/complete", follow_redirects=False)
+        self.assertEqual(complete.status_code, 303)
+        self.assertTrue(complete.headers["location"].endswith("/outcome"))
+
         task_update = self.client.post(
             convert.headers["location"] + "/tasks/scope_call",
             data={"completed": "1"},
@@ -397,4 +412,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-pilot-onboarding", template)
+        self.assertIn("style.css?v=20260708-pilot-outcome", template)

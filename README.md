@@ -805,3 +805,5 @@ Protected URLs:
 ### Pilot review delivery
 
 Pilot workspaces can now run VendorVerdict reviews directly from the pilot detail page, link saved reports back to the pilot, export PDF/Markdown artifacts, and track review count against the pilot target. See `docs/PILOT_REVIEW_DELIVERY.md`.
+
+- Pilot outcome summaries: close-out metrics, linked review evidence, open actions, Markdown export, and follow-up email drafts.

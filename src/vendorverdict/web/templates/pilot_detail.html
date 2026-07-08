@@ -11,6 +11,7 @@
     <div class="hero-actions compact">
       <a class="button secondary" href="mailto:{{ pilot.contact_email }}">Email customer</a>
       {% if lead %}<a class="button secondary" href="/dashboard/leads/{{ lead.lead_id }}">View source lead</a>{% endif %}
+      <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Outcome summary</a>
       <a class="button secondary" href="/dashboard/pilots">Back to pilots</a>
     </div>
   </div>
@@ -71,7 +72,10 @@
       <h2>Run and track vendor reviews</h2>
       <p class="muted">Create saved VendorVerdict reports directly from this pilot workspace and track delivery against the review target.</p>
     </div>
-    <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/reviews.csv">Export reviews CSV</a>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Open outcome summary</a>
+      <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/reviews.csv">Export reviews CSV</a>
+    </div>
   </div>
 
   {% if review_errors %}

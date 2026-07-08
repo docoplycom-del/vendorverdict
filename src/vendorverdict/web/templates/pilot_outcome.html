@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Pilot outcome · {{ outcome.company }}{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot close-out</p>
+      <h1>Pilot outcome: {{ outcome.company }}</h1>
+      <p class="muted">Summarise delivery, customer value, open actions, and the next commercial step.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/pilots/{{ outcome.pilot_id }}">Back to workspace</a>
+      <a class="button secondary" href="/dashboard/pilots/{{ outcome.pilot_id }}/outcome.md">Download Markdown</a>
+      <form method="post" action="/dashboard/pilots/{{ outcome.pilot_id }}/complete">
+        <button class="button" type="submit">Mark pilot completed</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ outcome.review_count }}/{{ outcome.review_target }}</strong><span>reviews delivered</span></div>
+    <div class="metric"><strong>{{ outcome.review_progress_percent }}%</strong><span>review target</span></div>
+    <div class="metric"><strong>{{ outcome.checklist_percent }}%</strong><span>delivery checklist</span></div>
+    <div class="metric"><strong>{{ outcome.top_recommended_vendor or '—' }}</strong><span>most frequent recommendation</span></div>
+  </div>
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Summary</p>
+    <h2>Success signals</h2>
+    <ul class="check-list">
+      {% for signal in outcome.success_signals %}<li>{{ signal }}</li>{% endfor %}
+    </ul>
+  </article>
+  <article class="card compact-card">
+    <p class="eyebrow">Next actions</p>
+    <h2>Open actions</h2>
+    <ul class="check-list warning-list">
+      {% for action in outcome.open_actions %}<li>{{ action }}</li>{% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Delivered reviews</p>
+      <h2>Pilot review evidence</h2>
+      <p class="muted">Each row links back to the underlying VendorVerdict report, PDF, and Markdown artifact.</p>
+    </div>
+  </div>
+  {% if outcome.reviews %}
+    <div class="table-wrap pilot-review-table">
+      <table>
+        <thead><tr><th>Review</th><th>Use case</th><th>Vendors</th><th>Recommendation</th><th>Confidence</th><th>Report</th></tr></thead>
+        <tbody>
+          {% for review in outcome.reviews %}
+            <tr>
+              <td><strong>{{ review.label }}</strong><br><small class="muted">{{ review.created_at[:19].replace('T', ' ') }}</small></td>
+              <td>{{ review.use_case or '—' }}</td>
+              <td>{{ review.vendors | join(', ') if review.vendors else '—' }}</td>
+              <td>{{ review.recommended_vendor or '—' }}</td>
+              <td>{{ review.confidence }}</td>
+              <td class="actions-cell">
+                <a class="button secondary small-button" href="/dashboard/reports/{{ review.report_id }}">View</a>
+                <a class="button secondary small-button" href="/reports/{{ review.report_id }}/pdf">PDF</a>
+                <a class="button secondary small-button" href="/reports/{{ review.report_id }}/markdown">Markdown</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No VendorVerdict reviews have been linked to this pilot yet.</p>
+  {% endif %}
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Close-out plan</p>
+    <h2>Suggested next steps</h2>
+    <ol class="number-list">
+      {% for step in outcome.suggested_next_steps %}<li>{{ step }}</li>{% endfor %}
+    </ol>
+  </article>
+  <article class="card compact-card followup-card">
+    <p class="eyebrow">Copy/paste email</p>
+    <h2>Pilot outcome follow-up</h2>
+    <label for="outcome-subject">Subject</label>
+    <input id="outcome-subject" value="{{ outcome.followup_email_subject }}" readonly>
+    <label for="outcome-email">Body</label>
+    <textarea id="outcome-email" rows="14" readonly>{{ outcome.followup_email_body }}</textarea>
+    <a class="button secondary" href="mailto:{{ outcome.contact_email }}">Open email client</a>
+  </article>
+</section>
+{% endblock %}
