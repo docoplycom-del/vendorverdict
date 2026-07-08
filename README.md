@@ -807,3 +807,8 @@ Protected URLs:
 Pilot workspaces can now run VendorVerdict reviews directly from the pilot detail page, link saved reports back to the pilot, export PDF/Markdown artifacts, and track review count against the pilot target. See `docs/PILOT_REVIEW_DELIVERY.md`.
 
 - Pilot outcome summaries: close-out metrics, linked review evidence, open actions, Markdown export, and follow-up email drafts.
+
+
+## Commercial proposal workflow
+
+After a pilot outcome is ready, create a tracked commercial proposal from `/dashboard/pilots/{pilot_id}/outcome`. The proposal pipeline lives at `/dashboard/proposals` and includes editable pricing, scope, success criteria, next step, Markdown export, CSV export, and a copy/paste follow-up email.

@@ -35,6 +35,7 @@
             <span class="pill">{{ pilot.completed_tasks }}/{{ pilot.total_tasks }} tasks</span>
             <span class="pill">Target: {{ pilot.review_target }} reviews</span>
             <a class="button secondary small-button" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Outcome</a>
+            <form method="post" action="/dashboard/pilots/{{ pilot.pilot_id }}/proposal" class="inline-form"><button class="button secondary small-button" type="submit">Proposal</button></form>
             <a class="button small" href="/dashboard/pilots/{{ pilot.pilot_id }}">Open workspace</a>
           </div>
         </article>

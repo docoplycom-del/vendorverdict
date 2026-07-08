@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Proposal · {{ proposal.company }}{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Commercial proposal</p>
+      <h1>{{ proposal.company }}</h1>
+      <p class="muted">{{ proposal.status.replace('_', ' ') }} · {{ proposal.package_label }} · {{ proposal.proposed_price }}</p>
+    </div>
+    <div class="hero-actions compact">
+      {% if pilot %}<a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}">Pilot workspace</a>{% endif %}
+      {% if pilot %}<a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Pilot outcome</a>{% endif %}
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download Markdown</a>
+      <a class="button secondary" href="/dashboard/proposals">Back to proposals</a>
+    </div>
+  </div>
+
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ proposal.status }}</strong><span>proposal status</span></div>
+    <div class="metric"><strong>{{ proposal.package }}</strong><span>package</span></div>
+    <div class="metric"><strong>{{ outcome.review_count if outcome else '—' }}</strong><span>pilot reviews</span></div>
+    <div class="metric"><strong>{{ outcome.checklist_percent if outcome else '—' }}{% if outcome %}%{% endif %}</strong><span>pilot checklist</span></div>
+  </div>
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Proposal editor</p>
+    <h2>Commercial terms</h2>
+    <form class="lead-admin-form lead-detail-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/update">
+      <label for="proposal-status">Status</label>
+      <select id="proposal-status" name="status">
+        {% for status in proposal_statuses %}
+          <option value="{{ status }}" {% if proposal.status == status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="proposal-package">Package</label>
+      <select id="proposal-package" name="package">
+        {% for package in proposal_packages %}
+          <option value="{{ package }}" {% if proposal.package == package %}selected{% endif %}>{{ package }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="proposal-price">Proposed price</label>
+      <input id="proposal-price" name="proposed_price" value="{{ proposal.proposed_price }}">
+
+      <label for="proposal-billing">Billing / commercial model</label>
+      <textarea id="proposal-billing" name="billing" rows="3">{{ proposal.billing }}</textarea>
+
+      <label for="proposal-scope">Proposed scope</label>
+      <textarea id="proposal-scope" name="scope" rows="5">{{ proposal.scope }}</textarea>
+
+      <label for="proposal-success">Success criteria</label>
+      <textarea id="proposal-success" name="success_criteria" rows="6">{{ proposal.success_criteria }}</textarea>
+
+      <label for="proposal-next">Suggested next step</label>
+      <textarea id="proposal-next" name="next_step" rows="3">{{ proposal.next_step }}</textarea>
+
+      <label for="proposal-notes">Internal notes</label>
+      <textarea id="proposal-notes" name="notes" rows="5" placeholder="Add decision maker, price sensitivity, close date, objections, and follow-up history.">{{ proposal.notes }}</textarea>
+
+      <button class="button" type="submit">Save proposal</button>
+    </form>
+  </article>
+
+  <article class="card compact-card followup-card">
+    <p class="eyebrow">Copy/paste email</p>
+    <h2>Commercial follow-up</h2>
+    <label for="proposal-subject">Subject</label>
+    <input id="proposal-subject" value="{{ email.subject }}" readonly>
+    <label for="proposal-email">Body</label>
+    <textarea id="proposal-email" rows="18" readonly>{{ email.body }}</textarea>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="mailto:{{ proposal.contact_email }}">Open email client</a>
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download Markdown</a>
+    </div>
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Customer context</p>
+    <h2>Contact and pilot</h2>
+    <dl class="detail-list">
+      <dt>Contact</dt><dd>{{ proposal.contact_name }}</dd>
+      <dt>Email</dt><dd><a href="mailto:{{ proposal.contact_email }}">{{ proposal.contact_email }}</a></dd>
+      <dt>Company</dt><dd>{{ proposal.company }}</dd>
+      <dt>Pilot</dt><dd>{% if pilot %}<a href="/dashboard/pilots/{{ pilot.pilot_id }}">Open pilot workspace</a>{% else %}{{ proposal.pilot_id or '—' }}{% endif %}</dd>
+      <dt>Created</dt><dd>{{ proposal.created_at[:19].replace('T', ' ') }}</dd>
+      <dt>Updated</dt><dd>{{ proposal.updated_at[:19].replace('T', ' ') }}</dd>
+    </dl>
+  </article>
+  <article class="card compact-card">
+    <p class="eyebrow">Pilot evidence</p>
+    <h2>Close-out signal</h2>
+    {% if outcome %}
+      <ul class="check-list">
+        <li>{{ outcome.review_count }}/{{ outcome.review_target }} reviews delivered.</li>
+        <li>{{ outcome.checklist_percent }}% delivery checklist complete.</li>
+        {% if outcome.top_recommended_vendor %}<li>{{ outcome.top_recommended_vendor }} was the most frequent recommendation.</li>{% endif %}
+        <li><a href="/dashboard/pilots/{{ outcome.pilot_id }}/outcome">Open pilot outcome summary</a></li>
+      </ul>
+    {% else %}
+      <p class="muted">No linked pilot outcome available.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

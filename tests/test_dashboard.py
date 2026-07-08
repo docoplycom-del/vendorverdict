@@ -279,6 +279,54 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("text/markdown", outcome_md.headers["content-type"])
         self.assertIn("VendorVerdict pilot outcome", outcome_md.text)
 
+        proposal_create = self.client.post(convert.headers["location"] + "/proposal", follow_redirects=False)
+        self.assertEqual(proposal_create.status_code, 303)
+        self.assertTrue(proposal_create.headers["location"].startswith("/dashboard/proposals/"))
+
+        proposal_detail = self.client.get(proposal_create.headers["location"])
+        self.assertEqual(proposal_detail.status_code, 200)
+        self.assertIn("Commercial proposal", proposal_detail.text)
+        self.assertIn("Commercial follow-up", proposal_detail.text)
+        self.assertIn("Pilot Co", proposal_detail.text)
+        self.assertIn("Save proposal", proposal_detail.text)
+
+        proposal_update = self.client.post(
+            proposal_create.headers["location"] + "/update",
+            data={
+                "status": "sent",
+                "package": "starter",
+                "proposed_price": "£750/month",
+                "billing": "Monthly after pilot.",
+                "scope": "Recurring vendor reviews.",
+                "success_criteria": "Decision-ready vendor reviews before adoption.",
+                "next_step": "Book a close-out call.",
+                "notes": "Sent to buyer.",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(proposal_update.status_code, 303)
+        self.assertEqual(proposal_update.headers["location"], proposal_create.headers["location"])
+
+        updated_proposal = self.client.get(proposal_create.headers["location"])
+        self.assertEqual(updated_proposal.status_code, 200)
+        self.assertIn("£750/month", updated_proposal.text)
+        self.assertIn("Sent to buyer.", updated_proposal.text)
+
+        proposal_md = self.client.get(proposal_create.headers["location"] + ".md")
+        self.assertEqual(proposal_md.status_code, 200)
+        self.assertIn("text/markdown", proposal_md.headers["content-type"])
+        self.assertIn("VendorVerdict commercial proposal", proposal_md.text)
+
+        proposals = self.client.get("/dashboard/proposals")
+        self.assertEqual(proposals.status_code, 200)
+        self.assertIn("Pilot Co", proposals.text)
+        self.assertIn("Open proposal", proposals.text)
+
+        proposals_csv = self.client.get("/dashboard/proposals.csv")
+        self.assertEqual(proposals_csv.status_code, 200)
+        self.assertIn("text/csv", proposals_csv.headers["content-type"])
+        self.assertIn("Pilot Co", proposals_csv.text)
+
         complete = self.client.post(convert.headers["location"] + "/complete", follow_redirects=False)
         self.assertEqual(complete.status_code, 303)
         self.assertTrue(complete.headers["location"].endswith("/outcome"))
@@ -412,4 +460,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-pilot-outcome", template)
+        self.assertIn("style.css?v=20260708-commercial-proposals", template)

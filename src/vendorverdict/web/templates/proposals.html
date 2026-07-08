@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict Proposals{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Commercial close</p>
+      <h1>Commercial proposals</h1>
+      <p class="muted">Turn completed pilots into draft follow-up proposals, renewal emails, and next-step records.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/proposals.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard/pilots">Back to pilots</a>
+    </div>
+  </div>
+
+  <div class="metric-grid lead-status-grid">
+    {% for status in proposal_statuses %}
+      <div class="metric small-metric"><strong>{{ status_counts.get(status, 0) }}</strong><span>{{ status.replace('_', ' ') }}</span></div>
+    {% endfor %}
+  </div>
+
+  {% if proposals %}
+    <div class="report-list proposal-list">
+      {% for proposal in proposals %}
+        <article class="card report-card proposal-card">
+          <div>
+            <p class="eyebrow">{{ proposal.status.replace('_', ' ') }} · {{ proposal.package_label }}</p>
+            <h3>{{ proposal.company }}</h3>
+            <p>{{ proposal.proposed_price }}</p>
+            <p class="muted">Contact: {{ proposal.contact_name }} · {{ proposal.contact_email }}</p>
+          </div>
+          <div class="report-actions">
+            <span class="pill highlight">{{ proposal.status }}</span>
+            <span class="pill">{{ proposal.package }}</span>
+            <a class="button secondary small-button" href="/dashboard/pilots/{{ proposal.pilot_id }}/outcome">Outcome</a>
+            <a class="button secondary small-button" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Markdown</a>
+            <a class="button small" href="/dashboard/proposals/{{ proposal.proposal_id }}">Open proposal</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h2>No commercial proposals yet</h2>
+      <p>Create one from a pilot outcome page when you are ready to ask for the next commercial step.</p>
+      <a class="button" href="/dashboard/pilots">Open pilots</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

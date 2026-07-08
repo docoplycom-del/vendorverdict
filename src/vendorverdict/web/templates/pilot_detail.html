@@ -12,6 +12,7 @@
       <a class="button secondary" href="mailto:{{ pilot.contact_email }}">Email customer</a>
       {% if lead %}<a class="button secondary" href="/dashboard/leads/{{ lead.lead_id }}">View source lead</a>{% endif %}
       <a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Outcome summary</a>
+      <form method="post" action="/dashboard/pilots/{{ pilot.pilot_id }}/proposal" class="inline-form"><button class="button secondary" type="submit">Commercial proposal</button></form>
       <a class="button secondary" href="/dashboard/pilots">Back to pilots</a>
     </div>
   </div>

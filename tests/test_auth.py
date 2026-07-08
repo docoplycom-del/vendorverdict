@@ -147,6 +147,21 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertTrue(response.headers["location"].startswith("/login"))
 
+    def test_dashboard_proposals_requires_authentication(self) -> None:
+        response = self.client.get("/dashboard/proposals", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/login"))
+
+    def test_dashboard_proposal_detail_requires_authentication(self) -> None:
+        response = self.client.get("/dashboard/proposals/example-proposal-id", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/login"))
+
+    def test_dashboard_proposal_markdown_requires_authentication(self) -> None:
+        response = self.client.get("/dashboard/proposals/example-proposal-id.md", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/login"))
+
     def test_login_rejects_invalid_password(self) -> None:
         response = self.client.post(
             "/login",

@@ -11,6 +11,9 @@
     <div class="hero-actions compact">
       <a class="button secondary" href="/dashboard/pilots/{{ outcome.pilot_id }}">Back to workspace</a>
       <a class="button secondary" href="/dashboard/pilots/{{ outcome.pilot_id }}/outcome.md">Download Markdown</a>
+      <form method="post" action="/dashboard/pilots/{{ outcome.pilot_id }}/proposal">
+        <button class="button secondary" type="submit">Create commercial proposal</button>
+      </form>
       <form method="post" action="/dashboard/pilots/{{ outcome.pilot_id }}/complete">
         <button class="button" type="submit">Mark pilot completed</button>
       </form>

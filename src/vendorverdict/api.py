@@ -27,6 +27,13 @@ from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
 from vendorverdict.pilots import PILOT_PACKAGES, PILOT_STATUSES, PilotStore
 from vendorverdict.pilot_outcomes import build_pilot_outcome, render_pilot_outcome_markdown
+from vendorverdict.proposals import (
+    PROPOSAL_PACKAGES,
+    PROPOSAL_STATUSES,
+    ProposalStore,
+    build_proposal_email,
+    render_proposal_markdown,
+)
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
@@ -192,6 +199,10 @@ def create_app(
     def pilot_store() -> PilotStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return PilotStore(env_db or app.state.default_db_path)
+
+    def proposal_store() -> ProposalStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return ProposalStore(env_db or app.state.default_db_path)
 
     def resolved_export_dir() -> Path:
         return Path(
@@ -470,6 +481,7 @@ def create_app(
                 "reports": reports,
                 "lead_count": len(lead_store().list_leads(limit=200)),
                 "pilot_count": len(pilot_store().list_pilots(limit=200)),
+                "proposal_count": len(proposal_store().list_proposals(limit=200)),
                 "service": "VendorVerdict",
                 "version": __version__,
                 "auth": _auth_context(request),
@@ -809,6 +821,100 @@ def create_app(
         )
         pilots.set_task_completed(pilot_id, "final_review", True)
         return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}/outcome", status_code=303)
+
+    @app.post("/dashboard/pilots/{pilot_id}/proposal")
+    async def create_dashboard_proposal_from_pilot(pilot_id: str) -> RedirectResponse:
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        outcome = build_pilot_outcome(
+            pilot,
+            pilots.list_tasks(pilot_id),
+            pilots.list_reviews(pilot_id),
+        )
+        proposal_id = proposal_store().create_from_pilot(pilot, outcome)
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
+
+    @app.get("/dashboard/proposals", response_class=HTMLResponse)
+    def dashboard_proposals(request: Request) -> HTMLResponse:
+        proposals = proposal_store()
+        return TEMPLATES.TemplateResponse(
+            request,
+            "proposals.html",
+            {
+                "request": request,
+                "proposals": proposals.list_proposals(limit=100),
+                "status_counts": proposals.status_counts(),
+                "proposal_statuses": PROPOSAL_STATUSES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/proposals.csv")
+    def export_dashboard_proposals_csv() -> PlainTextResponse:
+        csv_text = proposal_store().export_csv(limit=2000)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-proposals.csv"'},
+        )
+
+    @app.get("/dashboard/proposals/{proposal_id}.md")
+    def export_dashboard_proposal_markdown(proposal_id: str) -> PlainTextResponse:
+        proposal = proposal_store().get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        return PlainTextResponse(
+            render_proposal_markdown(proposal),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-commercial-proposal.md"'},
+        )
+
+    @app.get("/dashboard/proposals/{proposal_id}", response_class=HTMLResponse)
+    def dashboard_proposal_detail(request: Request, proposal_id: str) -> HTMLResponse:
+        proposals = proposal_store()
+        proposal = proposals.get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(proposal.pilot_id) if proposal.pilot_id else None
+        outcome = None
+        if pilot is not None:
+            outcome = build_pilot_outcome(pilot, pilots.list_tasks(pilot.pilot_id), pilots.list_reviews(pilot.pilot_id))
+        email = build_proposal_email(proposal)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "proposal_detail.html",
+            {
+                "request": request,
+                "proposal": proposal,
+                "pilot": pilot,
+                "outcome": outcome,
+                "email": email,
+                "proposal_statuses": PROPOSAL_STATUSES,
+                "proposal_packages": PROPOSAL_PACKAGES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/dashboard/proposals/{proposal_id}/update")
+    async def update_dashboard_proposal(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        updated = proposal_store().update_proposal(
+            proposal_id,
+            status=form.get("status", "draft"),
+            package=form.get("package", "starter"),
+            proposed_price=form.get("proposed_price", ""),
+            billing=form.get("billing", ""),
+            scope=form.get("scope", ""),
+            success_criteria=form.get("success_criteria", ""),
+            next_step=form.get("next_step", ""),
+            notes=form.get("notes", ""),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
 
     @app.post("/dashboard/pilots/{pilot_id}/reviews/run", response_class=HTMLResponse)
     async def run_dashboard_pilot_review(request: Request, pilot_id: str):

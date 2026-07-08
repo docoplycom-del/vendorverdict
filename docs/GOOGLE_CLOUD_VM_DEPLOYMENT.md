@@ -428,3 +428,8 @@ After deployment, authenticated users can open `/dashboard/pilots`, select a pil
 ## Pilot outcome reporting
 
 - `/dashboard/pilots/{pilot_id}/outcome` — protected pilot close-out summary and Markdown export.
+
+
+## Commercial proposals
+
+The protected dashboard includes `/dashboard/proposals`, `/dashboard/proposals.csv`, and `/dashboard/proposals/{proposal_id}` for converting pilot outcomes into tracked commercial follow-up proposals. These routes use the same SQLite database and are included in the existing backup and restore workflow.
