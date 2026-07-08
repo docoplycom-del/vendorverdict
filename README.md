@@ -835,3 +835,7 @@ Reports and proposals can now be shared with customers through tokenized public 
 ### Admin settings page
 
 Authenticated users can edit non-secret runtime defaults at `/dashboard/settings`. The page controls default review region, data sensitivity, proposal price/billing, follow-up interval, public URL for share links, and operator email. Secrets such as auth passwords, webhooks, and API keys still remain in `/etc/vendorverdict/vendorverdict.env`. See `docs/ADMIN_SETTINGS.md`.
+
+### Pilot-readiness dashboard
+
+The production dashboard includes `/dashboard/readiness`, an end-to-end checklist for final pilot readiness. It covers public pages, lead capture, saved reports, pilot workspaces, proposals, customer share links, admin settings, and production operations.

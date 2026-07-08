@@ -824,3 +824,100 @@ html body button.button:not(.secondary) {
 .data-table th, .data-table td { border-bottom: 1px solid var(--line); padding: .7rem; text-align: left; vertical-align: top; }
 .data-table th { color: var(--text); }
 .data-table code, .mini-callout code { color: var(--accent-2); }
+
+/* Final pilot-readiness polish */
+.readiness-hero {
+  align-items: center;
+}
+
+.readiness-score-card {
+  background: rgba(255, 255, 255, .055);
+  border: 1px solid rgba(40, 213, 255, .28);
+  border-radius: 24px;
+  padding: 1.5rem;
+  min-width: min(100%, 280px);
+}
+
+.readiness-score-card strong {
+  color: var(--text);
+  display: block;
+  font-size: clamp(3rem, 7vw, 5rem);
+  line-height: 1;
+}
+
+.readiness-score-card span {
+  color: var(--muted);
+  display: block;
+  font-weight: 800;
+  margin-top: .5rem;
+}
+
+.progress-bar {
+  background: rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  height: 14px;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.progress-bar span {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  display: block;
+  height: 100%;
+  margin: 0;
+}
+
+.readiness-metrics {
+  margin: 1.25rem 0;
+}
+
+.readiness-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.readiness-item {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.readiness-item.ready {
+  border-color: rgba(45, 212, 191, .35);
+}
+
+.readiness-item.warning {
+  border-color: rgba(250, 204, 21, .35);
+}
+
+@media (max-width: 820px) {
+  .topbar,
+  .topbar nav,
+  .site-footer,
+  .site-footer nav,
+  .hero-actions,
+  .section-actions,
+  .readiness-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar nav a,
+  .hero-actions .button,
+  .hero-actions form,
+  .hero-actions button,
+  .section-actions a,
+  .report-actions .button {
+    text-align: center;
+    width: 100%;
+  }
+
+  .readiness-item {
+    display: block;
+  }
+
+  .readiness-item .report-actions {
+    margin-top: 1rem;
+  }
+}

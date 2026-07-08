@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Pilot readiness · VendorVerdict{% endblock %}
+{% block content %}
+<section class="hero card readiness-hero">
+  <div>
+    <p class="eyebrow">Final pilot-readiness check</p>
+    <h1>{{ snapshot.headline }}</h1>
+    <p class="lead">Use this page before outreach or a customer demo to confirm the full workflow: lead → follow-up → pilot → reviews → outcome → proposal → share link.</p>
+    <div class="hero-actions">
+      <a class="button" href="/pilot">Test public pilot form</a>
+      <a class="button secondary" href="/reviews/new">Run review</a>
+      <a class="button secondary" href="/dashboard/settings">Settings</a>
+      <a class="button secondary" href="/health">Health</a>
+    </div>
+  </div>
+  <div class="readiness-score-card">
+    <strong>{{ snapshot.readiness_percent }}%</strong>
+    <span>{{ snapshot.ready_required_count }}/{{ snapshot.required_count }} required checks ready</span>
+    <div class="progress-bar" aria-label="Pilot readiness progress">
+      <span style="width: {{ snapshot.readiness_percent }}%"></span>
+    </div>
+    <p class="muted">This score is a workflow readiness signal, not a legal, security, or compliance certification.</p>
+  </div>
+</section>
+
+<section class="metric-grid readiness-metrics">
+  <div class="metric"><strong>{{ snapshot.lead_count }}</strong><span>leads</span></div>
+  <div class="metric"><strong>{{ snapshot.pilot_count }}</strong><span>pilots</span></div>
+  <div class="metric"><strong>{{ snapshot.report_count }}</strong><span>reports</span></div>
+  <div class="metric"><strong>{{ snapshot.proposal_count }}</strong><span>proposals</span></div>
+  <div class="metric"><strong>{{ snapshot.share_count }}</strong><span>share links</span></div>
+</section>
+
+{% if snapshot.next_actions %}
+<section class="card next-step-card">
+  <p class="eyebrow">Next actions</p>
+  <h2>Do these before a real prospect demo</h2>
+  <ol class="number-list">
+    {% for item in snapshot.next_actions %}
+      <li><strong>{{ item.label }}:</strong> {{ item.action }} <a href="{{ item.url }}">Open →</a></li>
+    {% endfor %}
+  </ol>
+</section>
+{% else %}
+<section class="card next-step-card">
+  <p class="eyebrow">Ready for outreach</p>
+  <h2>Full pilot workflow is ready to show</h2>
+  <p>Run one final incognito test of the public pages and a logged-in test of the dashboard before sending links to prospects.</p>
+</section>
+{% endif %}
+
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Workflow checklist</p>
+    <h2>Production pilot-readiness checklist</h2>
+  </div>
+  <div class="section-actions">
+    <a href="/dashboard">Dashboard →</a>
+    <a href="/dashboard/leads">Leads →</a>
+    <a href="/dashboard/pilots">Pilots →</a>
+    <a href="/dashboard/proposals">Proposals →</a>
+  </div>
+</section>
+
+<div class="readiness-list">
+  {% for item in snapshot.items %}
+    <article class="card readiness-item {{ item.status }}">
+      <div>
+        <p class="eyebrow">{{ 'Required' if item.required else 'Operational' }}</p>
+        <h3>{{ item.label }}</h3>
+        <p>{{ item.detail }}</p>
+        <p class="muted">{{ item.action }}</p>
+      </div>
+      <div class="report-actions">
+        <span class="pill {{ 'highlight' if item.status == 'ready' else 'warning' }}">{{ item.status }}</span>
+        <a class="button small secondary" href="{{ item.url }}">Open</a>
+      </div>
+    </article>
+  {% endfor %}
+</div>
+
+<section class="card mini-callout">
+  <h2>Final manual smoke test</h2>
+  <ol class="number-list">
+    <li>Open the public homepage, demo, pricing, trust, privacy, and disclaimer pages in incognito.</li>
+    <li>Submit one test pilot request and confirm it appears in the lead inbox.</li>
+    <li>Convert the lead into a pilot workspace, run one review, and export PDF/Markdown.</li>
+    <li>Create an outcome summary, create a proposal, download the customer PDF, and create a share link.</li>
+    <li>Run <code>sudo /opt/vendorverdict/scripts/status_vendorverdict.sh</code> on the VM after deploy.</li>
+  </ol>
+</section>
+{% endblock %}

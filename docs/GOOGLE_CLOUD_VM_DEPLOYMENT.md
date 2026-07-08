@@ -469,3 +469,14 @@ https://vendorverdict.docoply.com/dashboard/settings
 ```
 
 The settings page stores non-secret defaults in SQLite, so existing database backups include it automatically. Keep secrets and webhook URLs in `/etc/vendorverdict/vendorverdict.env`.
+
+
+## Pilot-readiness check
+
+After a successful deploy, open the protected readiness page:
+
+```text
+https://vendorverdict.docoply.com/dashboard/readiness
+```
+
+Use it to run the final lead → pilot → review → outcome → proposal → share-link smoke test before prospect outreach.

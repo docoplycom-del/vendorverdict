@@ -485,4 +485,41 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-admin-settings", template)
+        self.assertIn("style.css?v=20260708-final-readiness", template)
+
+class PilotReadinessTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db = os.environ.get("VENDORVERDICT_API_DB_PATH")
+        self.old_export = os.environ.get("VENDORVERDICT_API_EXPORT_DIR")
+        self.old_live = os.environ.get("VENDORVERDICT_API_LIVE_EVIDENCE")
+        os.environ["VENDORVERDICT_API_DB_PATH"] = os.path.join(self.tmp.name, "readiness.sqlite3")
+        os.environ["VENDORVERDICT_API_EXPORT_DIR"] = os.path.join(self.tmp.name, "reports")
+        os.environ["VENDORVERDICT_API_LIVE_EVIDENCE"] = "0"
+        self.client = TestClient(app)
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+        _restore_env("VENDORVERDICT_API_DB_PATH", self.old_db)
+        _restore_env("VENDORVERDICT_API_EXPORT_DIR", self.old_export)
+        _restore_env("VENDORVERDICT_API_LIVE_EVIDENCE", self.old_live)
+
+    def test_pilot_readiness_page_renders_next_actions(self) -> None:
+        response = self.client.get("/dashboard/readiness")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Final pilot-readiness check", response.text)
+        self.assertIn("Production pilot-readiness checklist", response.text)
+        self.assertIn("Lead capture workflow", response.text)
+        self.assertIn("Customer share links", response.text)
+        self.assertIn("Submit one test pilot request", response.text)
+        self.assertIn("status_vendorverdict.sh", response.text)
+
+    def test_dashboard_links_to_pilot_readiness_page(self) -> None:
+        dashboard = self.client.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn("Readiness check", dashboard.text)
+        self.assertIn('/dashboard/readiness', dashboard.text)
+
+        template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
+        self.assertIn('/dashboard/readiness', template)
+        self.assertIn('style.css?v=20260708-final-readiness', template)

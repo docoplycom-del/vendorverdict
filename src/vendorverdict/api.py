@@ -40,6 +40,7 @@ from vendorverdict.proposals import (
 )
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.proposal_pdf import export_proposal_pdf
+from vendorverdict.readiness import build_readiness_snapshot
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.shares import ShareLink, ShareStore
 from vendorverdict.settings import SETTING_DEFINITIONS, SettingsStore
@@ -501,6 +502,33 @@ def create_app(
                 "proposal_count": len(proposal_store().list_proposals(limit=200)),
                 "service": "VendorVerdict",
                 "version": __version__,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/readiness", response_class=HTMLResponse)
+    def dashboard_readiness(request: Request) -> HTMLResponse:
+        report_count = len(store().list_reports(limit=1000))
+        lead_count = len(lead_store().list_leads(limit=200))
+        pilot_count = len(pilot_store().list_pilots(limit=200))
+        proposal_count = len(proposal_store().list_proposals(limit=500))
+        share_count = len(share_store().list_shares(limit=1000))
+        runtime_settings = settings_store().get_settings()
+        snapshot = build_readiness_snapshot(
+            report_count=report_count,
+            lead_count=lead_count,
+            pilot_count=pilot_count,
+            proposal_count=proposal_count,
+            share_count=share_count,
+            public_url=runtime_settings.public_url,
+        )
+        return TEMPLATES.TemplateResponse(
+            request,
+            "readiness.html",
+            {
+                "request": request,
+                "snapshot": snapshot,
+                "settings": runtime_settings,
                 "auth": _auth_context(request),
             },
         )
