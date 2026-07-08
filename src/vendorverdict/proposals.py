@@ -370,7 +370,7 @@ def render_proposal_markdown(proposal: ProposalRecord) -> str:
             customer_success_criteria(proposal.success_criteria) or "To be agreed.",
             "",
             "## Suggested next step",
-            proposal.next_step or "Book a commercial follow-up call.",
+            customer_next_step(proposal.next_step),
             "",
             "## Disclaimer",
             "This VendorVerdict proposal is a commercial discussion document. It is not legal advice, financial advice, a formal security audit, or a binding contract unless separately agreed in writing.",
@@ -380,8 +380,18 @@ def render_proposal_markdown(proposal: ProposalRecord) -> str:
 
 
 def customer_success_criteria(text: str) -> str:
-    """Remove internal pilot metrics from customer-facing proposal exports."""
+    """Make proposal success criteria customer-facing.
+
+    The proposal record can retain internal pilot detail for the dashboard, but customer exports should
+    avoid weak progress metrics and overly vendor-specific wording such as "why Notion was
+    recommended most often".
+    """
     cleaned: list[str] = []
+    inserted_vendor_approach = False
+    generic_vendor_line = (
+        "- Use the close-out discussion to confirm the recommended vendor approach, "
+        "remaining evidence gaps, and rollout priorities."
+    )
     for raw_line in (text or "").splitlines():
         line = raw_line.strip()
         lower = line.lower()
@@ -389,10 +399,39 @@ def customer_success_criteria(text: str) -> str:
             continue
         if "pilot delivery baseline:" in lower and "reviews delivered" in lower:
             continue
+        if (
+            "recommended most often" in lower
+            or ("review why" in lower and "recommended" in lower)
+            or ("why " in lower and " was recommended" in lower)
+        ):
+            if not inserted_vendor_approach:
+                cleaned.append(generic_vendor_line)
+                inserted_vendor_approach = True
+            continue
         cleaned.append(line)
     if not cleaned:
         return ""
     return "\n".join(cleaned)
+
+
+def customer_next_step(text: str) -> str:
+    """Return a polished customer-facing next step for proposal exports."""
+    fallback = (
+        "Book a 30-minute call to review the pilot outcome, confirm rollout scope, "
+        "and agree the recurring VendorVerdict package."
+    )
+    candidate = (text or "").strip()
+    if not candidate:
+        return fallback
+    lower = candidate.lower()
+    if (
+        "remaining pilot actions" in lower
+        or "commercial close-out" in lower
+        or "close-out call" in lower
+        or "recurring package" in lower
+    ):
+        return fallback
+    return candidate
 
 
 def _sentence_value(value: str) -> str:
@@ -408,16 +447,16 @@ def _success_criteria_from_outcome(outcome: PilotOutcome | None, pilot: PilotRec
         )
     criteria = [
         f"Continue if VendorVerdict can support up to {outcome.review_target} recurring SaaS review decisions with clear reports and evidence-backed due-diligence questions.",
-        "Use the pilot close-out discussion to agree recurring review volume, decision owners, and evidence standards for rollout.",
+        "Use the close-out discussion to confirm the recommended vendor approach, remaining evidence gaps, and rollout priorities.",
+        "Use the rollout discussion to agree recurring review volume, decision owners, and evidence standards.",
     ]
-    if outcome.top_recommended_vendor:
-        criteria.append(f"Review why {outcome.top_recommended_vendor} was recommended and confirm any remaining evidence gaps before rollout.")
     if pilot.objective:
         criteria.append(f"Customer objective: {pilot.objective}")
     return "\n".join(f"- {item}" for item in criteria)
 
 
 def _next_step_from_outcome(outcome: PilotOutcome | None) -> str:
-    if outcome and outcome.open_actions and outcome.open_actions != ("No major open actions recorded.",):
-        return "Book a 30-minute commercial close-out call, resolve the remaining pilot actions, and agree the recurring package."
-    return "Book a 30-minute commercial close-out call and agree whether to start the recurring VendorVerdict package."
+    return (
+        "Book a 30-minute call to review the pilot outcome, confirm rollout scope, "
+        "and agree the recurring VendorVerdict package."
+    )

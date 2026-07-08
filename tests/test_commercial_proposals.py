@@ -13,6 +13,7 @@ from vendorverdict.proposals import (
     build_proposal_email,
     normalize_proposal_package,
     normalize_proposal_status,
+    customer_next_step,
     customer_success_criteria,
     render_proposal_markdown,
 )
@@ -73,6 +74,9 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertIn("£1,000", proposal.proposed_price)
         self.assertNotIn("1/2 reviews", proposal.success_criteria)
         self.assertIn("up to 2 recurring SaaS review decisions", proposal.success_criteria)
+        self.assertIn("recommended vendor approach", proposal.success_criteria)
+        self.assertNotIn("Review why Notion", proposal.success_criteria)
+        self.assertIn("review the pilot outcome", proposal.next_step)
 
         duplicate = self.proposals.create_from_pilot(updated_pilot, outcome)
         self.assertEqual(duplicate, proposal_id)
@@ -106,9 +110,14 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertNotIn("Internal notes", markdown)
 
         self.assertEqual(format_proposal_date("2026-07-08T10:26:15.864861+00:00"), "8 July 2026")
-        customer_criteria = customer_success_criteria("- Pilot delivery baseline: 1/20 reviews delivered and 62% checklist completion.\n- Customer objective: Storing client data")
+        customer_criteria = customer_success_criteria("- Pilot delivery baseline: 1/20 reviews delivered and 62% checklist completion.\n- Use the close-out discussion to confirm why Notion was recommended most often and what evidence gaps remain.\n- Customer objective: Storing client data")
         self.assertNotIn("1/20 reviews", customer_criteria)
+        self.assertNotIn("Notion was recommended", customer_criteria)
+        self.assertIn("recommended vendor approach", customer_criteria)
         self.assertIn("Customer objective", customer_criteria)
+        polished_next_step = customer_next_step("Book a 30-minute commercial close-out call, resolve the remaining pilot actions, and agree the recurring package.")
+        self.assertIn("review the pilot outcome", polished_next_step)
+        self.assertNotIn("remaining pilot actions", polished_next_step)
 
         pdf_path = export_proposal_pdf(proposal_id, output_dir=self.tmp.name, store=self.proposals)
         self.assertTrue(os.path.exists(pdf_path))

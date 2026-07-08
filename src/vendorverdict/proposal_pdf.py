@@ -12,7 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from vendorverdict.proposals import ProposalRecord, ProposalStore, customer_success_criteria
+from vendorverdict.proposals import ProposalRecord, ProposalStore, customer_next_step, customer_success_criteria
 
 
 PROPOSAL_DISCLAIMER = (
@@ -76,7 +76,7 @@ def build_proposal_pdf(proposal: ProposalRecord, output_path: str | Path) -> Pat
     story.append(Spacer(1, 0.14 * inch))
 
     story.append(Paragraph("Suggested next step", styles["Heading1"]))
-    story.append(_cta_box(proposal.next_step or "Book a commercial follow-up call.", styles))
+    story.append(_cta_box(customer_next_step(proposal.next_step), styles))
     story.append(Spacer(1, 0.18 * inch))
 
     story.append(Paragraph("Contact", styles["Heading1"]))

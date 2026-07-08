@@ -42,3 +42,12 @@ The previous export was technically correct but looked like an internal system e
 
 - customer proposal material, suitable to send externally
 - internal proposal workflow, kept on the protected dashboard
+
+
+## Follow-up wording polish
+
+A later wording polish also makes customer exports safer for real prospects:
+
+- replaces "resolve the remaining pilot actions" with a positive rollout call-to-action
+- replaces vendor-specific wording such as "why Notion was recommended most often" with a more general discussion of recommended vendor approach, evidence gaps, and rollout priorities
+- applies the customer-facing wording at export time, so existing proposal records can still produce polished PDFs and Markdown exports
