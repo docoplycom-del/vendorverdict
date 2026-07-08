@@ -289,7 +289,7 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Commercial follow-up", proposal_detail.text)
         self.assertIn("Pilot Co", proposal_detail.text)
         self.assertIn("Save proposal", proposal_detail.text)
-        self.assertIn("Download PDF", proposal_detail.text)
+        self.assertIn("Download customer PDF", proposal_detail.text)
 
         proposal_update = self.client.post(
             proposal_create.headers["location"] + "/update",
@@ -316,7 +316,7 @@ class DashboardTests(unittest.TestCase):
         proposal_md = self.client.get(proposal_create.headers["location"] + ".md")
         self.assertEqual(proposal_md.status_code, 200)
         self.assertIn("text/markdown", proposal_md.headers["content-type"])
-        self.assertIn("VendorVerdict commercial proposal", proposal_md.text)
+        self.assertIn("VendorVerdict proposal", proposal_md.text)
 
         proposal_pdf = self.client.get(proposal_create.headers["location"] + ".pdf")
         self.assertEqual(proposal_pdf.status_code, 200)
@@ -467,4 +467,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-commercial-proposals", template)
+        self.assertIn("style.css?v=20260708-customer-proposal-polish", template)

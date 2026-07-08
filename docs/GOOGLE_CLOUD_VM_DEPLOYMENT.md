@@ -435,3 +435,7 @@ After deployment, authenticated users can open `/dashboard/pilots`, select a pil
 ## Commercial proposals
 
 The protected dashboard includes `/dashboard/proposals`, `/dashboard/proposals.csv`, and `/dashboard/proposals/{proposal_id}` for converting pilot outcomes into tracked commercial follow-up proposals. These routes use the same SQLite database and are included in the existing backup and restore workflow.
+
+## Customer proposal polish
+
+Commercial proposal PDF and Markdown exports are customer-facing. Internal proposal notes, statuses, pilot IDs, and follow-up drafts remain on the protected dashboard.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape
@@ -11,7 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from vendorverdict.proposals import ProposalRecord, ProposalStore, build_proposal_email
+from vendorverdict.proposals import ProposalRecord, ProposalStore, customer_success_criteria
 
 
 PROPOSAL_DISCLAIMER = (
@@ -38,67 +39,56 @@ def export_proposal_pdf(
 
 
 def build_proposal_pdf(proposal: ProposalRecord, output_path: str | Path) -> Path:
-    """Create a structured PDF from a proposal record."""
+    """Create a customer-facing proposal PDF from a proposal record.
+
+    The PDF intentionally excludes internal pipeline status, internal notes, raw timestamps,
+    follow-up email drafts, and pilot IDs. Those remain available on the protected dashboard.
+    """
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     doc = SimpleDocTemplate(
         str(output),
         pagesize=A4,
-        rightMargin=0.55 * inch,
-        leftMargin=0.55 * inch,
+        rightMargin=0.62 * inch,
+        leftMargin=0.62 * inch,
         topMargin=0.55 * inch,
         bottomMargin=0.6 * inch,
-        title=f"VendorVerdict Commercial Proposal {proposal.company}",
+        title=f"VendorVerdict Proposal {proposal.company}",
         author="VendorVerdict",
     )
     styles = _styles()
     story: list[Any] = []
 
     story.append(Paragraph("VendorVerdict", styles["TitleBrand"]))
-    story.append(Paragraph("Commercial Proposal", styles["Subtitle"]))
-    story.append(Spacer(1, 0.18 * inch))
-    story.append(Paragraph(_safe(proposal.company), styles["Heading1"]))
-    story.append(Spacer(1, 0.08 * inch))
-    story.append(_summary_table(proposal, styles))
-    story.append(Spacer(1, 0.18 * inch))
-    story.append(Paragraph(_safe(PROPOSAL_DISCLAIMER), styles["SmallMuted"]))
-    story.append(Spacer(1, 0.22 * inch))
+    story.append(Paragraph("Customer proposal", styles["Subtitle"]))
+    story.append(Spacer(1, 0.14 * inch))
 
-    story.append(Paragraph("Proposed Scope", styles["Heading1"]))
+    story.append(_hero_box(proposal, styles))
+    story.append(Spacer(1, 0.2 * inch))
+
+    story.append(Paragraph("Proposed scope", styles["Heading1"]))
     story.append(_paragraph_block(proposal.scope or "To be agreed.", styles))
     story.append(Spacer(1, 0.14 * inch))
 
-    story.append(Paragraph("Success Criteria", styles["Heading1"]))
-    story.append(_paragraph_block(proposal.success_criteria or "To be agreed.", styles))
+    story.append(Paragraph("Success criteria", styles["Heading1"]))
+    story.append(_paragraph_block(customer_success_criteria(proposal.success_criteria) or "To be agreed.", styles))
     story.append(Spacer(1, 0.14 * inch))
 
-    story.append(Paragraph("Suggested Next Step", styles["Heading1"]))
-    story.append(_paragraph_block(proposal.next_step or "Book a commercial follow-up call.", styles))
+    story.append(Paragraph("Suggested next step", styles["Heading1"]))
+    story.append(_cta_box(proposal.next_step or "Book a commercial follow-up call.", styles))
     story.append(Spacer(1, 0.18 * inch))
 
-    story.append(Paragraph("Customer Contact", styles["Heading1"]))
+    story.append(Paragraph("Contact", styles["Heading1"]))
     story.append(_two_col_table([
         ["Contact", proposal.contact_name or "-"],
         ["Email", proposal.contact_email or "-"],
         ["Company", proposal.company or "-"],
-        ["Pilot ID", proposal.pilot_id or "-"],
     ], styles))
-    story.append(Spacer(1, 0.18 * inch))
+    story.append(Spacer(1, 0.2 * inch))
 
-    email = build_proposal_email(proposal)
-    story.append(Paragraph("Follow-Up Email Draft", styles["Heading1"]))
-    story.append(Paragraph(_safe(f"Subject: {email.subject}"), styles["BodyBold"]))
-    story.append(Paragraph(_safe(email.body).replace("\n", "<br/>"), styles["MonoBlock"]))
-    story.append(Spacer(1, 0.18 * inch))
-
-    if proposal.notes:
-        story.append(Paragraph("Internal Notes", styles["Heading1"]))
-        story.append(_paragraph_block(proposal.notes, styles))
-        story.append(Spacer(1, 0.14 * inch))
-
-    story.append(Paragraph("Disclaimer", styles["Heading1"]))
-    story.append(Paragraph(_safe(PROPOSAL_DISCLAIMER), styles["Body"]))
+    story.append(Paragraph("Important note", styles["Heading1"]))
+    story.append(Paragraph(_safe(PROPOSAL_DISCLAIMER), styles["SmallMuted"]))
 
     doc.build(story, onFirstPage=_page_footer, onLaterPages=_page_footer)
     return output
@@ -111,11 +101,11 @@ def _styles() -> dict[str, ParagraphStyle]:
             "ProposalTitleBrand",
             parent=base["Title"],
             fontName="Helvetica-Bold",
-            fontSize=26,
-            leading=30,
+            fontSize=27,
+            leading=31,
             textColor=colors.HexColor("#1F2A7A"),
             alignment=TA_CENTER,
-            spaceAfter=8,
+            spaceAfter=5,
         ),
         "Subtitle": ParagraphStyle(
             "ProposalSubtitle",
@@ -125,43 +115,60 @@ def _styles() -> dict[str, ParagraphStyle]:
             leading=17,
             textColor=colors.HexColor("#3B4A68"),
             alignment=TA_CENTER,
-            spaceAfter=18,
+            spaceAfter=10,
+        ),
+        "HeroCompany": ParagraphStyle(
+            "ProposalHeroCompany",
+            parent=base["Heading1"],
+            fontName="Helvetica-Bold",
+            fontSize=17,
+            leading=21,
+            textColor=colors.HexColor("#0F172A"),
+            spaceAfter=6,
+        ),
+        "HeroMuted": ParagraphStyle(
+            "ProposalHeroMuted",
+            parent=base["BodyText"],
+            fontName="Helvetica",
+            fontSize=9.2,
+            leading=12.2,
+            textColor=colors.HexColor("#475569"),
+            spaceAfter=5,
         ),
         "Heading1": ParagraphStyle(
             "ProposalHeading1",
             parent=base["Heading1"],
             fontName="Helvetica-Bold",
-            fontSize=15,
-            leading=19,
+            fontSize=14.5,
+            leading=18.5,
             textColor=colors.HexColor("#18233F"),
-            spaceBefore=4,
+            spaceBefore=3,
             spaceAfter=8,
         ),
         "Body": ParagraphStyle(
             "ProposalBody",
             parent=base["BodyText"],
             fontName="Helvetica",
-            fontSize=9.2,
-            leading=12.2,
+            fontSize=9.3,
+            leading=12.4,
             textColor=colors.HexColor("#222222"),
             spaceAfter=4,
-        ),
-        "BodyBold": ParagraphStyle(
-            "ProposalBodyBold",
-            parent=base["BodyText"],
-            fontName="Helvetica-Bold",
-            fontSize=9.2,
-            leading=12.2,
-            textColor=colors.HexColor("#222222"),
-            spaceAfter=6,
         ),
         "Small": ParagraphStyle(
             "ProposalSmall",
             parent=base["BodyText"],
             fontName="Helvetica",
-            fontSize=7.7,
-            leading=9.6,
+            fontSize=7.8,
+            leading=9.7,
             textColor=colors.HexColor("#222222"),
+        ),
+        "SmallBold": ParagraphStyle(
+            "ProposalSmallBold",
+            parent=base["BodyText"],
+            fontName="Helvetica-Bold",
+            fontSize=7.8,
+            leading=9.7,
+            textColor=colors.HexColor("#111827"),
         ),
         "SmallMuted": ParagraphStyle(
             "ProposalSmallMuted",
@@ -171,27 +178,38 @@ def _styles() -> dict[str, ParagraphStyle]:
             leading=10.5,
             textColor=colors.HexColor("#5A657A"),
         ),
-        "MonoBlock": ParagraphStyle(
-            "ProposalMonoBlock",
+        "Cta": ParagraphStyle(
+            "ProposalCta",
             parent=base["BodyText"],
-            fontName="Courier",
-            fontSize=7.8,
-            leading=9.7,
-            backColor=colors.HexColor("#F4F6FB"),
-            borderColor=colors.HexColor("#D8DEEF"),
-            borderWidth=0.5,
-            borderPadding=6,
-            textColor=colors.HexColor("#1E2430"),
+            fontName="Helvetica-Bold",
+            fontSize=9.2,
+            leading=12.4,
+            textColor=colors.HexColor("#0F172A"),
         ),
     }
 
 
+def _hero_box(proposal: ProposalRecord, styles: dict[str, ParagraphStyle]) -> Table:
+    rows = [
+        [Paragraph(_safe(proposal.company), styles["HeroCompany"])],
+        [Paragraph(_safe(f"Prepared {format_proposal_date(proposal.updated_at or proposal.created_at)}"), styles["HeroMuted"])],
+        [_summary_table(proposal, styles)],
+    ]
+    table = Table(rows, colWidths=[6.35 * inch], hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D9E0EE")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, 0), 12),
+        ("BOTTOMPADDING", (0, -1), (-1, -1), 12),
+    ]))
+    return table
+
+
 def _summary_table(proposal: ProposalRecord, styles: dict[str, ParagraphStyle]) -> Table:
     return _two_col_table([
-        ["Proposal ID", proposal.proposal_id],
-        ["Created", proposal.created_at],
-        ["Updated", proposal.updated_at],
-        ["Status", proposal.status.replace("_", " ")],
+        ["Proposal reference", _short_reference(proposal.proposal_id)],
         ["Package", proposal.package_label],
         ["Proposed price", proposal.proposed_price or "To be agreed"],
         ["Billing", proposal.billing or "To be agreed"],
@@ -199,10 +217,11 @@ def _summary_table(proposal: ProposalRecord, styles: dict[str, ParagraphStyle]) 
 
 
 def _two_col_table(rows: list[list[str]], styles: dict[str, ParagraphStyle]) -> Table:
-    data = [[Paragraph(_safe(k), styles["Small"]), Paragraph(_safe(v), styles["Small"])] for k, v in rows]
-    table = Table(data, colWidths=[1.45 * inch, 4.95 * inch], hAlign="LEFT")
+    data = [[Paragraph(_safe(k), styles["SmallBold"]), Paragraph(_safe(v), styles["Small"])] for k, v in rows]
+    table = Table(data, colWidths=[1.5 * inch, 4.55 * inch], hAlign="LEFT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EEF2FF")),
+        ("BACKGROUND", (1, 0), (1, -1), colors.white),
         ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#1F2937")),
         ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#D6DCEA")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -214,16 +233,44 @@ def _two_col_table(rows: list[list[str]], styles: dict[str, ParagraphStyle]) -> 
     return table
 
 
+def _cta_box(text: str, styles: dict[str, ParagraphStyle]) -> Table:
+    table = Table([[Paragraph(_safe(text), styles["Cta"])]], colWidths=[6.35 * inch], hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E6FBFF")),
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#22D3EE")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+    ]))
+    return table
+
+
 def _paragraph_block(text: str, styles: dict[str, ParagraphStyle]) -> Paragraph:
     return Paragraph(_safe(text).replace("\n", "<br/>"), styles["Body"])
+
+
+def format_proposal_date(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        return parsed.strftime("%d %B %Y").lstrip("0")
+    except ValueError:
+        return value[:10] if len(value) >= 10 else value
+
+
+def _short_reference(value: str) -> str:
+    return (value or "").split("-")[0] or "-"
 
 
 def _page_footer(canvas: Any, doc: SimpleDocTemplate) -> None:
     canvas.saveState()
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(colors.HexColor("#6B7280"))
-    canvas.drawString(0.55 * inch, 0.35 * inch, "VendorVerdict commercial proposal")
-    canvas.drawRightString(A4[0] - 0.55 * inch, 0.35 * inch, f"Page {doc.page}")
+    canvas.drawString(0.62 * inch, 0.35 * inch, "VendorVerdict customer proposal")
+    canvas.drawRightString(A4[0] - 0.62 * inch, 0.35 * inch, f"Page {doc.page}")
     canvas.restoreState()
 
 

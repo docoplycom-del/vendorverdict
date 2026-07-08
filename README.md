@@ -816,3 +816,7 @@ After a pilot outcome is ready, create a tracked commercial proposal from `/dash
 ### Commercial proposal PDF export
 
 Commercial proposals can now be downloaded as customer-ready PDFs from `/dashboard/proposals/{proposal_id}.pdf`. The PDF includes proposal metadata, package, price, billing model, scope, success criteria, next step, customer contact, follow-up email draft, internal notes, and disclaimer. See `docs/COMMERCIAL_PROPOSAL_PDF_EXPORT.md`.
+
+### Customer-ready commercial proposal exports
+
+VendorVerdict now separates customer-facing proposal exports from internal proposal tracking. Proposal PDFs and Markdown exports remove internal status, raw timestamps, internal notes, pilot IDs, and follow-up email drafts, while the protected dashboard keeps those details for admin follow-up.

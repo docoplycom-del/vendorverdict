@@ -7,12 +7,13 @@ import unittest
 from vendorverdict.leads import LeadStore
 from vendorverdict.pilot_outcomes import build_pilot_outcome
 from vendorverdict.pilots import PilotStore
-from vendorverdict.proposal_pdf import export_proposal_pdf
+from vendorverdict.proposal_pdf import export_proposal_pdf, format_proposal_date
 from vendorverdict.proposals import (
     ProposalStore,
     build_proposal_email,
     normalize_proposal_package,
     normalize_proposal_status,
+    customer_success_criteria,
     render_proposal_markdown,
 )
 from vendorverdict.storage import ReportStore
@@ -70,7 +71,8 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertEqual(proposal.package, "team")
         self.assertEqual(proposal.status, "draft")
         self.assertIn("£1,000", proposal.proposed_price)
-        self.assertIn("1/2 reviews", proposal.success_criteria)
+        self.assertNotIn("1/2 reviews", proposal.success_criteria)
+        self.assertIn("up to 2 recurring SaaS review decisions", proposal.success_criteria)
 
         duplicate = self.proposals.create_from_pilot(updated_pilot, outcome)
         self.assertEqual(duplicate, proposal_id)
@@ -98,9 +100,15 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertIn("£1,250/month", email.body)
 
         markdown = render_proposal_markdown(updated)
-        self.assertIn("VendorVerdict commercial proposal", markdown)
+        self.assertIn("VendorVerdict proposal", markdown)
         self.assertIn("Recurring vendor reviews", markdown)
-        self.assertIn("Follow-up email draft", markdown)
+        self.assertNotIn("Follow-up email draft", markdown)
+        self.assertNotIn("Internal notes", markdown)
+
+        self.assertEqual(format_proposal_date("2026-07-08T10:26:15.864861+00:00"), "8 July 2026")
+        customer_criteria = customer_success_criteria("- Pilot delivery baseline: 1/20 reviews delivered and 62% checklist completion.\n- Customer objective: Storing client data")
+        self.assertNotIn("1/20 reviews", customer_criteria)
+        self.assertIn("Customer objective", customer_criteria)
 
         pdf_path = export_proposal_pdf(proposal_id, output_dir=self.tmp.name, store=self.proposals)
         self.assertTrue(os.path.exists(pdf_path))

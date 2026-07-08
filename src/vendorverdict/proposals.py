@@ -331,9 +331,10 @@ class ProposalStore:
 def build_proposal_email(proposal: ProposalRecord) -> ProposalEmail:
     greeting_name = proposal.contact_name.split()[0] if proposal.contact_name else "there"
     subject = f"VendorVerdict next step for {proposal.company}"
+    company_sentence = _sentence_value(proposal.company)
     body = (
         f"Hi {greeting_name},\n\n"
-        f"Following the VendorVerdict pilot, I put together a proposed next step for {proposal.company}.\n\n"
+        f"Following the VendorVerdict pilot, I put together a proposed next step for {company_sentence}\n\n"
         f"Suggested package: {proposal.package_label}\n"
         f"Commercial starting point: {proposal.proposed_price}\n\n"
         f"Proposed scope:\n{proposal.scope}\n\n"
@@ -347,38 +348,56 @@ def build_proposal_email(proposal: ProposalRecord) -> ProposalEmail:
 
 
 def render_proposal_markdown(proposal: ProposalRecord) -> str:
-    email = build_proposal_email(proposal)
+    """Render a customer-facing proposal Markdown export.
+
+    Internal tracking details such as pipeline status, internal notes, pilot IDs, and email drafts stay on
+    the protected dashboard rather than in customer-shareable exports.
+    """
     return "\n".join(
         [
-            f"# VendorVerdict commercial proposal: {proposal.company}",
+            f"# VendorVerdict proposal for {proposal.company}",
             "",
-            "## Proposal summary",
-            f"- Status: {proposal.status}",
+            "## Package and commercial terms",
             f"- Package: {proposal.package_label}",
-            f"- Proposed price: {proposal.proposed_price}",
-            f"- Billing: {proposal.billing}",
+            f"- Proposed price: {proposal.proposed_price or 'To be agreed'}",
+            f"- Billing: {proposal.billing or 'To be agreed'}",
             f"- Contact: {proposal.contact_name} <{proposal.contact_email}>",
-            f"- Pilot ID: {proposal.pilot_id}",
             "",
             "## Proposed scope",
             proposal.scope or "To be agreed.",
             "",
             "## Success criteria",
-            proposal.success_criteria or "To be agreed.",
+            customer_success_criteria(proposal.success_criteria) or "To be agreed.",
             "",
             "## Suggested next step",
             proposal.next_step or "Book a commercial follow-up call.",
             "",
-            "## Internal notes",
-            proposal.notes or "No internal notes recorded.",
-            "",
-            "## Follow-up email draft",
-            f"Subject: {email.subject}",
-            "",
-            email.body,
+            "## Disclaimer",
+            "This VendorVerdict proposal is a commercial discussion document. It is not legal advice, financial advice, a formal security audit, or a binding contract unless separately agreed in writing.",
             "",
         ]
     )
+
+
+def customer_success_criteria(text: str) -> str:
+    """Remove internal pilot metrics from customer-facing proposal exports."""
+    cleaned: list[str] = []
+    for raw_line in (text or "").splitlines():
+        line = raw_line.strip()
+        lower = line.lower()
+        if not line:
+            continue
+        if "pilot delivery baseline:" in lower and "reviews delivered" in lower:
+            continue
+        cleaned.append(line)
+    if not cleaned:
+        return ""
+    return "\n".join(cleaned)
+
+
+def _sentence_value(value: str) -> str:
+    cleaned = (value or "").strip() or "your team"
+    return cleaned if cleaned.endswith((".", "!", "?")) else f"{cleaned}."
 
 
 def _success_criteria_from_outcome(outcome: PilotOutcome | None, pilot: PilotRecord) -> str:
@@ -388,11 +407,11 @@ def _success_criteria_from_outcome(outcome: PilotOutcome | None, pilot: PilotRec
             "SaaS review records before sensitive client or business data is put into new tools."
         )
     criteria = [
-        f"Continue if VendorVerdict can support {outcome.review_target} recurring SaaS review decisions with clear reports and evidence-backed due-diligence questions.",
-        f"Pilot delivery baseline: {outcome.review_count}/{outcome.review_target} reviews delivered and {outcome.checklist_percent}% checklist completion.",
+        f"Continue if VendorVerdict can support up to {outcome.review_target} recurring SaaS review decisions with clear reports and evidence-backed due-diligence questions.",
+        "Use the pilot close-out discussion to agree recurring review volume, decision owners, and evidence standards for rollout.",
     ]
     if outcome.top_recommended_vendor:
-        criteria.append(f"Use the close-out discussion to confirm why {outcome.top_recommended_vendor} was recommended most often and what evidence gaps remain.")
+        criteria.append(f"Review why {outcome.top_recommended_vendor} was recommended and confirm any remaining evidence gaps before rollout.")
     if pilot.objective:
         criteria.append(f"Customer objective: {pilot.objective}")
     return "\n".join(f"- {item}" for item in criteria)
