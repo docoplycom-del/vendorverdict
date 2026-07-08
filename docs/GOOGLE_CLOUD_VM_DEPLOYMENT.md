@@ -193,6 +193,8 @@ https://vendorverdict.docoply.com/login
 https://vendorverdict.docoply.com/dashboard
 ```
 
+Protected pilot and commercial workflows also run through the same dashboard service. Proposal PDFs are exported on demand from `/dashboard/proposals/{proposal_id}.pdf` into the configured report export directory.
+
 ## 7. Update deployment after a new GitHub push
 
 ```bash

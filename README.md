@@ -811,4 +811,8 @@ Pilot workspaces can now run VendorVerdict reviews directly from the pilot detai
 
 ## Commercial proposal workflow
 
-After a pilot outcome is ready, create a tracked commercial proposal from `/dashboard/pilots/{pilot_id}/outcome`. The proposal pipeline lives at `/dashboard/proposals` and includes editable pricing, scope, success criteria, next step, Markdown export, CSV export, and a copy/paste follow-up email.
+After a pilot outcome is ready, create a tracked commercial proposal from `/dashboard/pilots/{pilot_id}/outcome`. The proposal pipeline lives at `/dashboard/proposals` and includes editable pricing, scope, success criteria, next step, Markdown export, PDF export, CSV export, and a copy/paste follow-up email.
+
+### Commercial proposal PDF export
+
+Commercial proposals can now be downloaded as customer-ready PDFs from `/dashboard/proposals/{proposal_id}.pdf`. The PDF includes proposal metadata, package, price, billing model, scope, success criteria, next step, customer contact, follow-up email draft, internal notes, and disclaimer. See `docs/COMMERCIAL_PROPOSAL_PDF_EXPORT.md`.

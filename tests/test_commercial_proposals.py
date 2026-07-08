@@ -7,6 +7,7 @@ import unittest
 from vendorverdict.leads import LeadStore
 from vendorverdict.pilot_outcomes import build_pilot_outcome
 from vendorverdict.pilots import PilotStore
+from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.proposals import (
     ProposalStore,
     build_proposal_email,
@@ -100,6 +101,12 @@ class CommercialProposalTests(unittest.TestCase):
         self.assertIn("VendorVerdict commercial proposal", markdown)
         self.assertIn("Recurring vendor reviews", markdown)
         self.assertIn("Follow-up email draft", markdown)
+
+        pdf_path = export_proposal_pdf(proposal_id, output_dir=self.tmp.name, store=self.proposals)
+        self.assertTrue(os.path.exists(pdf_path))
+        with open(pdf_path, "rb") as handle:
+            self.assertEqual(handle.read(4), b"%PDF")
+        self.assertIn("vendorverdict-commercial-proposal", os.path.basename(pdf_path))
 
         csv_text = self.proposals.export_csv()
         self.assertIn("Proposal Co", csv_text)

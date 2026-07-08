@@ -35,6 +35,7 @@ from vendorverdict.proposals import (
     render_proposal_markdown,
 )
 from vendorverdict.pdf_export import export_report_pdf
+from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
@@ -869,6 +870,19 @@ def create_app(
             render_proposal_markdown(proposal),
             media_type="text/markdown; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="vendorverdict-commercial-proposal.md"'},
+        )
+
+    @app.get("/dashboard/proposals/{proposal_id}.pdf")
+    def export_dashboard_proposal_pdf(proposal_id: str) -> FileResponse:
+        proposals = proposal_store()
+        proposal = proposals.get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        path = export_proposal_pdf(proposal_id, output_dir=resolved_export_dir(), store=proposals)
+        return FileResponse(
+            path=str(path),
+            media_type="application/pdf",
+            filename=path.name,
         )
 
     @app.get("/dashboard/proposals/{proposal_id}", response_class=HTMLResponse)

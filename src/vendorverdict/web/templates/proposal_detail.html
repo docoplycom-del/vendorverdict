@@ -11,6 +11,7 @@
     <div class="hero-actions compact">
       {% if pilot %}<a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}">Pilot workspace</a>{% endif %}
       {% if pilot %}<a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}/outcome">Pilot outcome</a>{% endif %}
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Download PDF</a>
       <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download Markdown</a>
       <a class="button secondary" href="/dashboard/proposals">Back to proposals</a>
     </div>
@@ -74,6 +75,7 @@
     <textarea id="proposal-email" rows="18" readonly>{{ email.body }}</textarea>
     <div class="hero-actions compact">
       <a class="button secondary" href="mailto:{{ proposal.contact_email }}">Open email client</a>
+      <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Download PDF</a>
       <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.md">Download Markdown</a>
     </div>
   </article>

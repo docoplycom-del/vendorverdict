@@ -289,6 +289,7 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Commercial follow-up", proposal_detail.text)
         self.assertIn("Pilot Co", proposal_detail.text)
         self.assertIn("Save proposal", proposal_detail.text)
+        self.assertIn("Download PDF", proposal_detail.text)
 
         proposal_update = self.client.post(
             proposal_create.headers["location"] + "/update",
@@ -317,10 +318,16 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("text/markdown", proposal_md.headers["content-type"])
         self.assertIn("VendorVerdict commercial proposal", proposal_md.text)
 
+        proposal_pdf = self.client.get(proposal_create.headers["location"] + ".pdf")
+        self.assertEqual(proposal_pdf.status_code, 200)
+        self.assertIn("application/pdf", proposal_pdf.headers["content-type"])
+        self.assertTrue(proposal_pdf.content.startswith(b"%PDF"))
+
         proposals = self.client.get("/dashboard/proposals")
         self.assertEqual(proposals.status_code, 200)
         self.assertIn("Pilot Co", proposals.text)
         self.assertIn("Open proposal", proposals.text)
+        self.assertIn("PDF", proposals.text)
 
         proposals_csv = self.client.get("/dashboard/proposals.csv")
         self.assertEqual(proposals_csv.status_code, 200)
