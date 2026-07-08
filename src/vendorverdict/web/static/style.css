@@ -133,3 +133,50 @@ th { color: var(--muted); font-size: .85rem; }
 .check-list li::before { content: "✓"; position: absolute; left: 0; color: var(--ok); font-weight: 900; }
 .compact-report { max-height: 360px; }
 @media (max-width: 900px) { .demo-banner { grid-template-columns: 1fr; } }
+
+.form-card label {
+  display: block;
+  margin: 0 0 0.95rem;
+  font-weight: 700;
+}
+
+.form-card input,
+.form-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.35rem;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  font: inherit;
+  background: #fff;
+}
+
+.form-card textarea {
+  resize: vertical;
+}
+
+.compact-form label {
+  margin-bottom: 0.75rem;
+}
+
+.alert.error {
+  background: #fff5f5;
+  border: 1px solid #ffc9c9;
+  color: #7a1d1d;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.callout {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f7f9fc;
+  border: 1px solid #e6ebf2;
+}
+
+.demo-lead-capture {
+  margin-top: 1.2rem;
+}

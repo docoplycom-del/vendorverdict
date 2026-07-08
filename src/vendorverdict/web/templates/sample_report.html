@@ -8,7 +8,8 @@
     <p class="lead">This public preview shows the kind of scorecard, recommendation, risk notes, and due-diligence questions a pilot customer gets from VendorVerdict.</p>
     <p class="muted">This sample uses deterministic offline evidence so it is fast and reliable. Production reports can also run live official-source checks and export PDF/Markdown artifacts.</p>
     <div class="hero-actions">
-      <a class="button" href="/login">Login to run this report</a>
+      <a class="button" href="/pilot">Request pilot</a>
+      <a class="button secondary" href="/login">Login to run this report</a>
       <a class="button secondary" href="/reviews/new">Create custom review</a>
     </div>
   </div>
@@ -17,6 +18,31 @@
     <div class="metric"><strong>{{ winner.overall if winner else '—' }}</strong><span>top overall score</span></div>
     <div class="metric"><strong>{{ verdict.confidence }}</strong><span>confidence</span></div>
   </div>
+</section>
+
+
+<section class="grid-two demo-lead-capture">
+  <div class="card">
+    <p class="eyebrow">Want this for your team?</p>
+    <h2>Request a pilot from the demo page.</h2>
+    <p class="muted">Send your real use case and the vendors you are choosing between. VendorVerdict saves the request so it can be followed up from the protected lead inbox.</p>
+  </div>
+  <form class="card form-card compact-form" method="post" action="/leads/request">
+    <input type="hidden" name="source" value="demo">
+    <label>Name
+      <input name="name" placeholder="Your name" autocomplete="name">
+    </label>
+    <label>Email
+      <input name="email" placeholder="you@company.com" autocomplete="email">
+    </label>
+    <label>Company
+      <input name="company" placeholder="Company or team">
+    </label>
+    <label>Vendors / use case
+      <textarea name="use_case" rows="3" placeholder="For example: compare Notion and Airtable for client project data"></textarea>
+    </label>
+    <button class="button" type="submit">Request pilot</button>
+  </form>
 </section>
 
 <section class="grid-two demo-summary">

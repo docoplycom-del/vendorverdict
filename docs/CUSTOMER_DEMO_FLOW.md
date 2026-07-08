@@ -61,3 +61,8 @@ Expected:
 /demo      -> 200 OK
 /dashboard -> 303 See Other when not logged in
 ```
+
+
+## Lead capture
+
+The public demo now includes a compact pilot-request form. Users can also open the full form at `/pilot`. Saved requests are visible in the protected lead inbox at `/dashboard/leads`.

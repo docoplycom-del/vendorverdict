@@ -20,8 +20,10 @@
     <nav>
       <a href="/">Home</a>
       <a href="/demo">Demo</a>
+      <a href="/pilot">Request pilot</a>
       <a href="/dashboard">Reports</a>
       <a href="/reviews/new">New review</a>
+      {% if auth and auth.is_authenticated %}<a href="/dashboard/leads">Leads</a>{% endif %}
       <a href="/docs">API docs</a>
       <a href="/health">Health</a>
       {% if auth and auth.enabled %}

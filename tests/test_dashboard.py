@@ -48,6 +48,51 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Ranked scorecard", response.text)
         self.assertIn("Due-diligence email", response.text)
 
+
+    def test_public_pilot_request_form_renders(self) -> None:
+        response = self.client.get("/pilot")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Request a pilot", response.text)
+        self.assertIn("Vendors you are considering", response.text)
+
+    def test_demo_page_contains_lead_capture_form(self) -> None:
+        response = self.client.get("/demo")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('action="/leads/request"', response.text)
+        self.assertIn("Request pilot", response.text)
+
+    def test_lead_form_saves_request_and_dashboard_lists_it(self) -> None:
+        response = self.client.post(
+            "/leads/request",
+            data={
+                "name": "Alex Buyer",
+                "email": "alex@example.com",
+                "company": "Example Consulting",
+                "vendors": "Notion, Airtable",
+                "use_case": "storing client project data",
+                "message": "We want a pilot.",
+                "source": "demo",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/pilot/thanks"))
+
+        thanks = self.client.get(response.headers["location"])
+        self.assertEqual(thanks.status_code, 200)
+        self.assertIn("pilot request was saved", thanks.text)
+
+        leads = self.client.get("/dashboard/leads")
+        self.assertEqual(leads.status_code, 200)
+        self.assertIn("Alex Buyer", leads.text)
+        self.assertIn("alex@example.com", leads.text)
+        self.assertIn("Example Consulting", leads.text)
+
+    def test_invalid_lead_form_returns_errors(self) -> None:
+        response = self.client.post("/leads/request", data={"name": "A", "email": "bad"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Enter a valid email address", response.text)
+
     def test_dashboard_can_run_sample_review(self) -> None:
         response = self.client.post("/reviews/sample", follow_redirects=False)
         self.assertEqual(response.status_code, 303)

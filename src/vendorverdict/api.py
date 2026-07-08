@@ -22,6 +22,7 @@ from vendorverdict.auth import (
     set_session_cookie,
 )
 from vendorverdict.cli import DEMO_QUERY
+from vendorverdict.leads import LeadStore
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
@@ -180,6 +181,10 @@ def create_app(
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return ReportStore(env_db or app.state.default_db_path)
 
+    def lead_store() -> LeadStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return LeadStore(env_db or app.state.default_db_path)
+
     def resolved_export_dir() -> Path:
         return Path(
             os.getenv("VENDORVERDICT_API_EXPORT_DIR")
@@ -216,6 +221,61 @@ def create_app(
                 "scorecard": verdict.scores,
                 "winner": verdict.recommendation,
                 "report_text": report_text,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/pilot", response_class=HTMLResponse)
+    def pilot_request_form(request: Request) -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pilot_request.html",
+            {
+                "request": request,
+                "errors": [],
+                "values": _lead_default_values(source="pilot"),
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/leads/request", response_class=HTMLResponse)
+    async def submit_lead_request(request: Request) -> Any:
+        form = _parse_urlencoded_form(await request.body())
+        values = _lead_values_from_form(form)
+        errors = _validate_lead_values(values)
+
+        if errors:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "pilot_request.html",
+                {
+                    "request": request,
+                    "errors": errors,
+                    "values": values,
+                    "auth": _auth_context(request),
+                },
+                status_code=400,
+            )
+
+        lead_id = lead_store().save_lead(
+            name=values["name"],
+            email=values["email"],
+            company=values["company"],
+            use_case=values["use_case"],
+            vendors=values["vendors"],
+            message=values["message"],
+            source=values["source"],
+        )
+        return RedirectResponse(url=f"/pilot/thanks?lead_id={quote(lead_id)}", status_code=303)
+
+    @app.get("/pilot/thanks", response_class=HTMLResponse)
+    def pilot_request_thanks(request: Request, lead_id: str = "") -> HTMLResponse:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pilot_thanks.html",
+            {
+                "request": request,
+                "lead_id": lead_id,
                 "auth": _auth_context(request),
             },
         )
@@ -348,6 +408,7 @@ def create_app(
             {
                 "request": request,
                 "reports": reports,
+                "lead_count": len(lead_store().list_leads(limit=200)),
                 "service": "VendorVerdict",
                 "version": __version__,
                 "auth": _auth_context(request),
@@ -464,6 +525,19 @@ def create_app(
 
         return RedirectResponse(url=f"/dashboard/reports/{report_id}", status_code=303)
 
+    @app.get("/dashboard/leads", response_class=HTMLResponse)
+    def dashboard_leads(request: Request) -> HTMLResponse:
+        leads = lead_store().list_leads(limit=100)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "leads.html",
+            {
+                "request": request,
+                "leads": leads,
+                "auth": _auth_context(request),
+            },
+        )
+
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)
     def dashboard_report_detail(request: Request, report_id: str) -> HTMLResponse:
         report_store = store()
@@ -496,7 +570,7 @@ def _env_bool(name: str, *, default: bool) -> bool:
 
 
 def _is_public_path(path: str) -> bool:
-    if path in {"/", "/demo", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
+    if path in {"/", "/demo", "/pilot", "/pilot/thanks", "/leads/request", "/health", "/login", "/logout", "/favicon.ico", "/favicon.png"}:
         return True
     if path.startswith("/static/"):
         return True
@@ -512,7 +586,7 @@ def _is_browser_route(request: Request) -> bool:
     if request.method != "GET":
         return False
     path = request.url.path
-    return path == "/" or path == "/docs" or path.startswith("/dashboard") or path.startswith("/reviews")
+    return path == "/" or path == "/docs" or path.startswith("/pilot") or path.startswith("/dashboard") or path.startswith("/reviews")
 
 
 def _auth_context(request: Request) -> dict[str, Any]:
@@ -524,6 +598,37 @@ def _auth_context(request: Request) -> dict[str, Any]:
         "username": username,
         "is_authenticated": bool(username),
     }
+
+
+def _lead_default_values(*, source: str = "demo") -> dict[str, str]:
+    return {
+        "name": "",
+        "email": "",
+        "company": "",
+        "use_case": "",
+        "vendors": "",
+        "message": "",
+        "source": source,
+    }
+
+
+def _lead_values_from_form(form: dict[str, str]) -> dict[str, str]:
+    values = _lead_default_values(source=form.get("source", "demo") or "demo")
+    for key in values:
+        values[key] = form.get(key, values[key]).strip()
+    return values
+
+
+def _validate_lead_values(values: dict[str, str]) -> list[str]:
+    errors: list[str] = []
+    if len(values.get("name", "")) < 2:
+        errors.append("Enter your name.")
+    email = values.get("email", "")
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        errors.append("Enter a valid email address.")
+    if len(values.get("use_case", "")) < 5 and len(values.get("vendors", "")) < 3:
+        errors.append("Tell us what you want to review, or which vendors you are considering.")
+    return errors
 
 
 def _get_report_or_404(store: ReportStore, report_id: str) -> ReportRecord:

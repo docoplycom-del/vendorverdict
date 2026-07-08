@@ -371,3 +371,15 @@ Expected:
 /demo      -> 200 OK
 /dashboard -> 303 See Other when not logged in
 ```
+
+
+## Lead capture checks
+
+After deployment, verify the public pilot form and protected lead inbox:
+
+```bash
+curl -i https://vendorverdict.docoply.com/pilot
+curl -i https://vendorverdict.docoply.com/demo
+```
+
+The protected lead inbox is available at `/dashboard/leads`.

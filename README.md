@@ -706,6 +706,17 @@ sudo scripts/deploy_gcp_vm.sh
 This preserves `/opt/vendorverdict/.venv`, reinstalls operational scripts with executable permissions, restarts the service, checks local/public health, and runs the monitor once. See `docs/SAFE_DEPLOYMENT.md`.
 
 
+## Demo-to-lead capture
+
+VendorVerdict includes a public pilot request flow:
+
+- `/demo` includes a compact lead form below the sample report.
+- `/pilot` shows the full pilot request form.
+- `/pilot/thanks` confirms submission.
+- `/dashboard/leads` shows saved pilot requests for authenticated users.
+
+Lead requests are stored in SQLite in `lead_requests`, alongside saved reports. See `docs/LEAD_CAPTURE.md`.
+
 ## Customer demo flow
 
 VendorVerdict includes a public 30-second demo page for pilot calls:

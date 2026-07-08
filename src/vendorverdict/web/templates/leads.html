@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict Leads{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot requests</p>
+      <h1>Lead inbox</h1>
+      <p class="muted">Saved requests from the public demo and pilot form.</p>
+    </div>
+    <a class="button secondary" href="/dashboard">Back to reports</a>
+  </div>
+
+  {% if leads %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Created</th><th>Name</th><th>Email</th><th>Company</th><th>Vendors</th><th>Use case</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          {% for lead in leads %}
+            <tr>
+              <td>{{ lead.created_at[:19].replace('T', ' ') }}</td>
+              <td><strong>{{ lead.name }}</strong></td>
+              <td><a href="mailto:{{ lead.email }}">{{ lead.email }}</a></td>
+              <td>{{ lead.company or '—' }}</td>
+              <td>{{ lead.vendors or '—' }}</td>
+              <td>{{ lead.use_case or lead.message or '—' }}</td>
+              <td>{{ lead.source }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h2>No pilot requests yet</h2>
+      <p>Share the demo page and ask prospects to request a pilot.</p>
+      <a class="button" href="/demo">Open demo page</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

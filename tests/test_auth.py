@@ -81,6 +81,30 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("30-second customer demo", response.text)
 
+    def test_pilot_page_remains_public_when_auth_is_enabled(self) -> None:
+        response = self.client.get("/pilot")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Request a pilot", response.text)
+
+    def test_public_lead_submission_works_when_auth_is_enabled(self) -> None:
+        response = self.client.post(
+            "/leads/request",
+            data={
+                "name": "Pat Prospect",
+                "email": "pat@example.com",
+                "vendors": "Notion, Airtable",
+                "source": "demo",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/pilot/thanks"))
+
+    def test_dashboard_leads_requires_authentication(self) -> None:
+        response = self.client.get("/dashboard/leads", follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertTrue(response.headers["location"].startswith("/login"))
+
     def test_login_rejects_invalid_password(self) -> None:
         response = self.client.post(
             "/login",

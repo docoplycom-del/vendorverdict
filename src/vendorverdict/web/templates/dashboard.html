@@ -12,13 +12,14 @@
         <button class="button secondary" type="submit">Run sample review</button>
       </form>
       <a class="button secondary" href="/demo">Public demo</a>
+      <a class="button secondary" href="/dashboard/leads">Pilot requests ({{ lead_count }})</a>
       <a class="button secondary" href="/docs">Open API docs</a>
     </div>
   </div>
   <div class="metric-grid">
     <div class="metric"><strong>{{ reports|length }}</strong><span>recent reports</span></div>
     <div class="metric"><strong>PDF</strong><span>export ready</span></div>
-    <div class="metric"><strong>Live</strong><span>evidence + fallback</span></div>
+    <div class="metric"><strong>{{ lead_count }}</strong><span>pilot requests</span></div>
   </div>
 </section>
 
@@ -31,6 +32,7 @@
     <form method="post" action="/reviews/sample" class="inline-form">
       <button class="link-button" type="submit">Run sample review →</button>
     </form>
+    <a href="/dashboard/leads">View leads →</a>
     <a href="/reviews/new">Create report →</a>
   </div>
 </section>

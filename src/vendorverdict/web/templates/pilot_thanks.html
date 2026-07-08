@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Pilot request received{% endblock %}
+{% block content %}
+<section class="card landing-cta">
+  <div>
+    <p class="eyebrow">Request received</p>
+    <h1>Thanks — your VendorVerdict pilot request was saved.</h1>
+    <p class="lead">The next step is to review your use case and prepare a practical first vendor review.</p>
+    {% if lead_id %}<p class="muted">Reference: <code>{{ lead_id }}</code></p>{% endif %}
+  </div>
+  <div class="hero-actions compact">
+    <a class="button" href="/demo">Back to demo</a>
+    <a class="button secondary" href="/">Home</a>
+  </div>
+</section>
+{% endblock %}

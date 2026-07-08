@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Request a VendorVerdict pilot{% endblock %}
+{% block content %}
+<section class="hero card landing-hero">
+  <div>
+    <p class="eyebrow">Pilot request</p>
+    <h1>Turn the sample report into a pilot for your team.</h1>
+    <p class="lead">Share your use case and the vendors you are evaluating. VendorVerdict will use this to prepare a short pilot conversation and a first sample review.</p>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><strong>10–20</strong><span>pilot reviews</span></div>
+    <div class="metric"><strong>2–4</strong><span>weeks</span></div>
+    <div class="metric"><strong>PDF</strong><span>decision-ready reports</span></div>
+  </div>
+</section>
+
+<section class="grid-two">
+  <form class="card form-card" method="post" action="/leads/request">
+    <input type="hidden" name="source" value="{{ values.source }}">
+    <h2>Request a pilot</h2>
+    <p class="muted">Required fields are name, email, and either use case or vendors.</p>
+
+    {% if errors %}
+      <div class="alert error">
+        <strong>Please fix:</strong>
+        <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+
+    <label>Name
+      <input name="name" value="{{ values.name }}" placeholder="Your name" autocomplete="name">
+    </label>
+    <label>Email
+      <input name="email" value="{{ values.email }}" placeholder="you@company.com" autocomplete="email">
+    </label>
+    <label>Company
+      <input name="company" value="{{ values.company }}" placeholder="Company or team name" autocomplete="organization">
+    </label>
+    <label>Vendors you are considering
+      <input name="vendors" value="{{ values.vendors }}" placeholder="Notion, Airtable, Coda">
+    </label>
+    <label>Use case
+      <textarea name="use_case" rows="4" placeholder="For example: storing client project data for a 10-person consulting team in the UK">{{ values.use_case }}</textarea>
+    </label>
+    <label>Message
+      <textarea name="message" rows="4" placeholder="Anything else you want the review to consider">{{ values.message }}</textarea>
+    </label>
+
+    <button class="button" type="submit">Request pilot</button>
+  </form>
+
+  <aside class="card">
+    <p class="eyebrow">What the pilot includes</p>
+    <h2>Practical procurement outputs</h2>
+    <ul class="check-list">
+      <li>10–20 SaaS vendor reviews using your real buying scenarios.</li>
+      <li>Ranked scorecards for security, privacy, pricing risk, lock-in, and SME fit.</li>
+      <li>PDF/Markdown reports your team can share internally.</li>
+      <li>Due-diligence questions to send before approval.</li>
+      <li>A simple review session to decide what should become your workflow.</li>
+    </ul>
+    <div class="callout">
+      <strong>Best for:</strong> agencies, consultancies, startup ops teams, and SMEs choosing SaaS tools for client or business data.
+    </div>
+  </aside>
+</section>
+{% endblock %}

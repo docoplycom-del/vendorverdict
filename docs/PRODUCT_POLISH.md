@@ -80,3 +80,8 @@ Expected:
 ## Customer demo flow
 
 The public landing page now links to `/demo`, a sample VendorVerdict report that can be shown to prospects before they log in. The protected dashboard also includes **Run sample review**, which creates a saved report and exports PDF/Markdown artifacts from the default demo scenario.
+
+
+## Pilot request flow
+
+The product polish layer now includes a public `/pilot` page and a protected `/dashboard/leads` inbox so the demo can convert interest into saved pilot requests.
