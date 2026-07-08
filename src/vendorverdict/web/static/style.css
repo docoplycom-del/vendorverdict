@@ -549,3 +549,59 @@ html body .lead-admin-form textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Login form contrast final fix.
+   Auth inputs can be affected by browser autofill and inherited placeholder styles.
+   Keep this block last so admin/password fields remain readable. */
+:root {
+  --vv-login-field-bg: #0b1226;
+  --vv-login-field-text: #f8fafc;
+  --vv-login-field-placeholder: #94a3b8;
+  --vv-login-field-border: #38bdf8;
+}
+
+html body .auth-card input,
+html body .auth-card input[type="text"],
+html body .auth-card input[type="email"],
+html body .auth-card input[type="password"] {
+  background: var(--vv-login-field-bg) !important;
+  color: var(--vv-login-field-text) !important;
+  -webkit-text-fill-color: var(--vv-login-field-text) !important;
+  border: 1px solid var(--vv-login-field-border) !important;
+  caret-color: var(--vv-login-field-text) !important;
+  opacity: 1 !important;
+  font-weight: 700 !important;
+}
+
+html body .auth-card input::placeholder {
+  color: var(--vv-login-field-placeholder) !important;
+  -webkit-text-fill-color: var(--vv-login-field-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html body .auth-card input:focus {
+  outline: 4px solid rgba(56, 189, 248, 0.42) !important;
+  outline-offset: 2px !important;
+  border-color: #7dd3fc !important;
+}
+
+html body .auth-card input:-webkit-autofill,
+html body .auth-card input:-webkit-autofill:hover,
+html body .auth-card input:-webkit-autofill:focus,
+html body .auth-card input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--vv-login-field-text) !important;
+  box-shadow: 0 0 0 1000px var(--vv-login-field-bg) inset !important;
+  caret-color: var(--vv-login-field-text) !important;
+  transition: background-color 9999s ease-out 0s !important;
+}
+
+html body .auth-card button.button,
+html body .auth-card a.button,
+html body a.button:not(.secondary),
+html body button.button:not(.secondary) {
+  background: #172554 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid #38bdf8 !important;
+  text-shadow: none !important;
+}

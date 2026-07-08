@@ -282,7 +282,10 @@ class ContrastCssTests(unittest.TestCase):
         self.assertIn(".site-footer", css)
         self.assertIn(".trust-strip", css)
         self.assertIn(".lead-admin-form", css)
+        self.assertIn("--vv-login-field-bg", css)
+        self.assertIn("html body .auth-card input", css)
+        self.assertIn("input:-webkit-autofill", css)
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-lead-management", template)
+        self.assertIn("style.css?v=20260708-login-contrast-final", template)

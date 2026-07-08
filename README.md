@@ -781,3 +781,7 @@ Pilot and demo leads can be tracked from the protected lead inbox:
 ```
 
 The inbox supports status updates (`new`, `contacted`, `qualified`, `won`, `lost`), internal notes, notification status, and CSV export. See `docs/LEAD_MANAGEMENT.md`.
+
+### Login contrast hardening
+
+The login form uses high-contrast auth inputs and autofill-safe CSS so admin usernames, password bullets, and placeholders remain readable in Chrome and other browsers. See `docs/LOGIN_CONTRAST_FIX.md`.
