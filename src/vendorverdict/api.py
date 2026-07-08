@@ -54,6 +54,11 @@ from vendorverdict.readiness import build_readiness_snapshot
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.shares import ShareLink, ShareStore
 from vendorverdict.settings import SETTING_DEFINITIONS, SettingsStore
+from vendorverdict.stripe_checkout import (
+    amount_from_price_text,
+    create_stripe_checkout_session,
+    get_stripe_checkout_settings,
+)
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
@@ -1100,6 +1105,8 @@ def create_app(
         email_settings = get_proposal_email_settings()
         delivery_notice = _proposal_delivery_notice(request.query_params.get("delivery", ""))
         payment_delivery_notice = _payment_delivery_notice(request.query_params.get("payment_delivery", ""))
+        stripe_notice = _stripe_checkout_notice(request.query_params.get("stripe", ""))
+        stripe_settings = get_stripe_checkout_settings()
         payment_emails = build_payment_email_pair(proposal, share_url=share_url)
         return TEMPLATES.TemplateResponse(
             request,
@@ -1128,6 +1135,11 @@ def create_app(
                 "payment_reminder_email": payment_emails.reminder,
                 "payment_request_mailto": build_payment_mailto(proposal, share_url=share_url),
                 "payment_reminder_mailto": build_payment_mailto(proposal, reminder=True, share_url=share_url),
+                "stripe_checkout_settings": stripe_settings,
+                "stripe_checkout_configured": stripe_settings.is_configured,
+                "stripe_checkout_missing_fields": stripe_settings.missing_fields,
+                "stripe_checkout_notice": stripe_notice,
+                "default_checkout_amount": amount_from_price_text(proposal.proposed_price),
                 "auth": _auth_context(request),
             },
         )
@@ -1212,6 +1224,41 @@ def create_app(
         if not updated:
             raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
+
+    @app.post("/dashboard/proposals/{proposal_id}/stripe-checkout")
+    async def create_dashboard_stripe_checkout(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        amount = form.get("amount", "")
+        payment_due = form.get("payment_due", "") or _follow_up_date(settings_store().get_settings().payment_due_days_int)
+        proposals = proposal_store()
+        proposal = proposals.get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+
+        stripe_settings = get_stripe_checkout_settings()
+        if not stripe_settings.is_configured:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?stripe=not_configured", status_code=303)
+
+        app_settings = settings_store().get_settings()
+        base_url = _public_base_url(request, app_settings.public_url)
+        result = create_stripe_checkout_session(
+            proposal,
+            amount=amount,
+            settings=stripe_settings,
+            success_url=stripe_settings.success_url or f"{base_url}/dashboard/proposals/{proposal_id}?stripe=success",
+            cancel_url=stripe_settings.cancel_url or f"{base_url}/dashboard/proposals/{proposal_id}?stripe=cancelled",
+        )
+        if not result.created:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?stripe=error", status_code=303)
+
+        proposals.mark_invoice_sent(
+            proposal_id,
+            payment_due=payment_due,
+            payment_url=result.url,
+            invoice_reference=result.session_id,
+        )
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?stripe=created", status_code=303)
+
 
     @app.post("/dashboard/proposals/{proposal_id}/payment/send")
     async def send_dashboard_payment_email(request: Request, proposal_id: str) -> RedirectResponse:
@@ -1700,6 +1747,21 @@ def _payment_delivery_notice(value: str) -> dict[str, str]:
         return {"level": "warning", "message": "SMTP email sending is not configured. Use the payment mailto links or add SMTP settings in the VM env file."}
     if value == "error":
         return {"level": "error", "message": "Payment email could not be sent. Check SMTP settings and service logs."}
+    return {}
+
+
+
+def _stripe_checkout_notice(value: str) -> dict[str, str]:
+    if value == "created":
+        return {"level": "success", "message": "Stripe Checkout link created and saved on this proposal."}
+    if value == "success":
+        return {"level": "success", "message": "Customer returned from Stripe Checkout. Confirm payment in Stripe, then mark payment received."}
+    if value == "cancelled":
+        return {"level": "warning", "message": "Customer returned from a cancelled Stripe Checkout session."}
+    if value == "not_configured":
+        return {"level": "warning", "message": "Stripe Checkout is not configured. Add Stripe settings in the VM env file or use a manual payment link."}
+    if value == "error":
+        return {"level": "error", "message": "Stripe Checkout link could not be created. Check amount, Stripe settings, and service logs."}
     return {}
 
 def _follow_up_date(days: int) -> str:

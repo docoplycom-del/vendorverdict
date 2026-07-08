@@ -515,3 +515,17 @@ The admin settings page can set non-secret payment defaults such as `VENDORVERDI
 - Payment request workflow: proposal pages include payment request/reminder templates, mailto fallback, and optional SMTP sending for invoice/payment links.
 
 Payment request emails reuse the SMTP variables documented in the proposal email sending section.
+
+
+## Optional Stripe Checkout
+
+To create proposal payment links directly from the dashboard, add Stripe settings to `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_STRIPE_CHECKOUT_ENABLED=1
+VENDORVERDICT_STRIPE_SECRET_KEY=sk_test_or_live_key
+VENDORVERDICT_STRIPE_CURRENCY=gbp
+VENDORVERDICT_STRIPE_TIMEOUT_SECONDS=15
+```
+
+Restart/deploy after editing the env file. If Stripe is not configured, the dashboard keeps the manual invoice/payment link workflow.

@@ -852,3 +852,6 @@ VendorVerdict includes a lightweight payment tracker for proposal follow-up: inv
 ## Latest production additions
 
 - Payment request workflow: proposal pages include payment request/reminder templates, mailto fallback, and optional SMTP sending for invoice/payment links.
+
+
+See docs/STRIPE_CHECKOUT_WORKFLOW.md for optional Stripe Checkout link creation.

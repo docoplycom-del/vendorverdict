@@ -117,6 +117,41 @@
 </section>
 
 <section class="grid-two lead-detail-grid">
+  <article class="card compact-card payment-card stripe-card">
+    <p class="eyebrow">Stripe Checkout</p>
+    <h2>Create a checkout link</h2>
+    <p class="muted">Use this when you want VendorVerdict to generate a customer payment link instead of pasting one manually.</p>
+    {% if stripe_checkout_notice %}
+      <div class="notice {{ stripe_checkout_notice.level }}">{{ stripe_checkout_notice.message }}</div>
+    {% endif %}
+    {% if stripe_checkout_configured %}
+      <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/stripe-checkout">
+        <label for="stripe-amount">Checkout amount</label>
+        <input id="stripe-amount" name="amount" value="{{ default_checkout_amount }}" placeholder="1500">
+        <label for="stripe-payment-due">Payment due date</label>
+        <input id="stripe-payment-due" name="payment_due" type="date" value="{{ proposal.payment_due or default_payment_due_date }}">
+        <button class="button" type="submit">Create Stripe Checkout link</button>
+      </form>
+      <p class="muted">The generated Stripe URL is saved as the proposal payment link and can be used in the payment request email.</p>
+    {% else %}
+      <p class="muted">Stripe Checkout is optional and not configured. You can keep using manual payment links, invoices, or mailto payment requests.</p>
+      <div class="notice warning">Missing Stripe settings: {{ stripe_checkout_missing_fields|join(', ') }}</div>
+    {% endif %}
+  </article>
+
+  <article class="card compact-card payment-card">
+    <p class="eyebrow">Checkout status</p>
+    <h2>Saved payment link</h2>
+    <dl class="detail-list delivery-list">
+      <dt>Payment state</dt><dd>{{ proposal.payment_label }}</dd>
+      <dt>Payment link</dt><dd>{% if proposal.payment_url %}<a href="{{ proposal.payment_url }}" target="_blank" rel="noreferrer">Open saved payment link</a>{% else %}Not set{% endif %}</dd>
+      <dt>Reference</dt><dd>{{ proposal.invoice_reference or '—' }}</dd>
+    </dl>
+    <p class="muted">After the customer pays, verify it in your payment provider and click “Mark payment received”.</p>
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
   <article class="card compact-card followup-card payment-email-card">
     <p class="eyebrow">Payment email</p>
     <h2>Request or remind payment</h2>
