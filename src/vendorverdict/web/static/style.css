@@ -810,3 +810,17 @@ html body button.button:not(.secondary) {
   border-color: rgba(40, 213, 255, .32);
   background: linear-gradient(135deg, rgba(40, 213, 255, .10), rgba(64, 224, 177, .08));
 }
+
+/* Admin settings page */
+.notice { border: 1px solid var(--line); border-radius: 16px; margin-top: 1rem; padding: 1rem; }
+.notice.success { background: rgba(55, 255, 178, .12); border-color: rgba(55, 255, 178, .35); color: var(--text); }
+.notice.error { background: rgba(255, 99, 99, .12); border-color: rgba(255, 99, 99, .35); color: var(--text); }
+.field-help { display: block; color: var(--muted); font-size: .88rem; font-weight: 500; margin-top: .25rem; }
+.settings-form label { margin-top: 1rem; }
+.reset-form { margin-top: 1rem; }
+.mini-callout { background: rgba(40, 213, 255, .10); border: 1px solid rgba(40, 213, 255, .32); border-radius: 16px; margin: 1rem 0; padding: 1rem; }
+.table-wrap { overflow-x: auto; }
+.data-table { border-collapse: collapse; width: 100%; }
+.data-table th, .data-table td { border-bottom: 1px solid var(--line); padding: .7rem; text-align: left; vertical-align: top; }
+.data-table th { color: var(--text); }
+.data-table code, .mini-callout code { color: var(--accent-2); }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import parse_qs, quote
@@ -41,6 +42,7 @@ from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.shares import ShareLink, ShareStore
+from vendorverdict.settings import SETTING_DEFINITIONS, SettingsStore
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
@@ -213,6 +215,10 @@ def create_app(
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return ShareStore(env_db or app.state.default_db_path)
 
+    def settings_store() -> SettingsStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return SettingsStore(env_db or app.state.default_db_path)
+
     def resolved_export_dir() -> Path:
         return Path(
             os.getenv("VENDORVERDICT_API_EXPORT_DIR")
@@ -344,7 +350,7 @@ def create_app(
         )
         lead = leads.get_lead(lead_id)
         if lead is not None:
-            result = send_lead_notification(lead, app_base_url=_public_base_url(request))
+            result = send_lead_notification(lead, app_base_url=_public_base_url(request, settings_store().get_settings().public_url))
             leads.update_notification_status(lead_id, status=result.status, error=result.message)
         return RedirectResponse(url=f"/pilot/thanks?lead_id={quote(lead_id)}", status_code=303)
 
@@ -482,12 +488,14 @@ def create_app(
     def dashboard(request: Request) -> HTMLResponse:
         report_store = store()
         reports = report_store.list_reports(limit=25)
+        runtime_settings = settings_store().get_settings()
         return TEMPLATES.TemplateResponse(
             request,
             "dashboard.html",
             {
                 "request": request,
                 "reports": reports,
+                "settings": runtime_settings,
                 "lead_count": len(lead_store().list_leads(limit=200)),
                 "pilot_count": len(pilot_store().list_pilots(limit=200)),
                 "proposal_count": len(proposal_store().list_proposals(limit=200)),
@@ -496,6 +504,53 @@ def create_app(
                 "auth": _auth_context(request),
             },
         )
+
+    @app.get("/dashboard/settings", response_class=HTMLResponse)
+    def dashboard_settings(request: Request, saved: str = "") -> HTMLResponse:
+        settings = settings_store().get_settings()
+        return TEMPLATES.TemplateResponse(
+            request,
+            "settings.html",
+            {
+                "request": request,
+                "settings": settings,
+                "definitions": SETTING_DEFINITIONS,
+                "env_summary": settings_store().env_summary(),
+                "errors": [],
+                "saved": saved == "1",
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/dashboard/settings", response_class=HTMLResponse)
+    async def update_dashboard_settings(request: Request) -> Any:
+        form = _parse_urlencoded_form(await request.body())
+        values = {key: form.get(key, "") for key in SETTING_DEFINITIONS}
+        errors = _validate_settings_values(values)
+        if errors:
+            settings = settings_store().get_settings()
+            merged = {**settings.as_dict(), **values}
+            return TEMPLATES.TemplateResponse(
+                request,
+                "settings.html",
+                {
+                    "request": request,
+                    "settings": merged,
+                    "definitions": SETTING_DEFINITIONS,
+                    "env_summary": settings_store().env_summary(),
+                    "errors": errors,
+                    "saved": False,
+                    "auth": _auth_context(request),
+                },
+                status_code=400,
+            )
+        settings_store().update_settings(values)
+        return RedirectResponse(url="/dashboard/settings?saved=1", status_code=303)
+
+    @app.post("/dashboard/settings/reset")
+    async def reset_dashboard_settings() -> RedirectResponse:
+        settings_store().reset_settings()
+        return RedirectResponse(url="/dashboard/settings?saved=1", status_code=303)
 
     @app.get("/reviews/new", response_class=HTMLResponse)
     def new_review(request: Request) -> HTMLResponse:
@@ -507,7 +562,7 @@ def create_app(
                 "default_query": DEMO_QUERY,
                 "errors": [],
                 "draft_response": "",
-                "values": _dashboard_default_values(),
+                "values": _dashboard_default_values(settings_store().get_settings()),
                 "auth": _auth_context(request),
             },
         )
@@ -659,7 +714,7 @@ def create_app(
                 "request": request,
                 "lead": lead,
                 "lead_statuses": LEAD_STATUSES,
-                "followups": build_lead_followup_templates(lead, app_base_url=_public_base_url(request)),
+                "followups": build_lead_followup_templates(lead, app_base_url=_public_base_url(request, settings_store().get_settings().public_url)),
                 "auth": _auth_context(request),
             },
         )
@@ -726,7 +781,7 @@ def create_app(
                 "tasks": pilots.list_tasks(pilot_id),
                 "reviews": pilots.list_reviews(pilot_id),
                 "review_count": pilots.review_count(pilot_id),
-                "review_values": _pilot_review_default_values(pilot),
+                "review_values": _pilot_review_default_values(pilot, settings_store().get_settings()),
                 "review_errors": [],
                 "draft_response": "",
                 "pilot_statuses": PILOT_STATUSES,
@@ -842,7 +897,7 @@ def create_app(
             pilots.list_tasks(pilot_id),
             pilots.list_reviews(pilot_id),
         )
-        proposal_id = proposal_store().create_from_pilot(pilot, outcome)
+        proposal_id = proposal_store().create_from_pilot(pilot, outcome, settings=settings_store().get_settings())
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
 
     @app.get("/dashboard/proposals", response_class=HTMLResponse)
@@ -1014,7 +1069,8 @@ def create_app(
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "proposal_packages": PROPOSAL_PACKAGES,
                 "share": share,
-                "share_url": _full_share_url(request, share, resource_type="proposal") if share else "",
+                "share_url": _full_share_url(request, share, resource_type="proposal", public_url=settings_store().get_settings().public_url) if share else "",
+                "default_follow_up_date": _follow_up_date(settings_store().get_settings().follow_up_days_int),
                 "auth": _auth_context(request),
             },
         )
@@ -1031,7 +1087,7 @@ def create_app(
     async def update_dashboard_proposal_delivery(request: Request, proposal_id: str) -> RedirectResponse:
         form = _parse_urlencoded_form(await request.body())
         action = form.get("action", "schedule")
-        follow_up_due = form.get("follow_up_due", "")
+        follow_up_due = form.get("follow_up_due", "") or _follow_up_date(settings_store().get_settings().follow_up_days_int)
         proposals = proposal_store()
         if action == "mark_sent":
             updated = proposals.mark_sent(proposal_id, follow_up_due=follow_up_due)
@@ -1185,7 +1241,7 @@ def create_app(
                 "markdown_url": f"/reports/{report_id}/markdown",
                 "pdf_url": f"/reports/{report_id}/pdf",
                 "share": share,
-                "share_url": _full_share_url(request, share, resource_type="report") if share else "",
+                "share_url": _full_share_url(request, share, resource_type="report", public_url=settings_store().get_settings().public_url) if share else "",
                 "auth": _auth_context(request),
             },
         )
@@ -1237,8 +1293,8 @@ def _is_browser_route(request: Request) -> bool:
     return path == "/" or path == "/docs" or path.startswith("/pilot") or path.startswith("/dashboard") or path.startswith("/reviews")
 
 
-def _public_base_url(request: Request) -> str:
-    configured = os.getenv("VENDORVERDICT_PUBLIC_URL", "").strip()
+def _public_base_url(request: Request, public_url: str = "") -> str:
+    configured = (public_url or os.getenv("VENDORVERDICT_PUBLIC_URL", "")).strip()
     if configured:
         return configured.rstrip("/")
     return str(request.base_url).rstrip("/")
@@ -1256,14 +1312,14 @@ def _auth_context(request: Request) -> dict[str, Any]:
 
 
 
-def _pilot_review_default_values(pilot: Any) -> dict[str, str]:
+def _pilot_review_default_values(pilot: Any, settings: Any | None = None) -> dict[str, str]:
     return {
         "label": "First pilot review",
         "vendors": "",
         "use_case": pilot.objective or "",
         "team_size": "",
-        "region": "UK",
-        "data_sensitivity": "medium",
+        "region": _setting_value(settings, "default_review_region", "UK"),
+        "data_sensitivity": _setting_value(settings, "default_data_sensitivity", "medium"),
         "query": "",
     }
 
@@ -1362,8 +1418,8 @@ def _get_share_or_404(store: ShareStore, token: str, *, expected_type: str) -> S
     return share
 
 
-def _full_share_url(request: Request, share: ShareLink, *, resource_type: str) -> str:
-    base = _public_base_url(request)
+def _full_share_url(request: Request, share: ShareLink, *, resource_type: str, public_url: str = "") -> str:
+    base = _public_base_url(request, public_url)
     return f"{base}/share/{resource_type}/{share.token}"
 
 
@@ -1411,13 +1467,13 @@ def _run_response(record: ReportRecord, exports: dict[str, str] | None = None) -
 
 
 
-def _dashboard_default_values() -> dict[str, Any]:
+def _dashboard_default_values(settings: Any | None = None) -> dict[str, Any]:
     return {
         "vendors": "Notion, Airtable",
         "use_case": "storing client project data",
         "team_size": "10",
-        "region": "UK",
-        "data_sensitivity": "medium-high",
+        "region": _setting_value(settings, "default_review_region", "UK"),
+        "data_sensitivity": _setting_value(settings, "default_data_sensitivity", "medium-high"),
         "query": DEMO_QUERY,
         "live_evidence": False,
         "export_markdown": True,
@@ -1459,6 +1515,36 @@ def _compose_dashboard_query(form: dict[str, str]) -> str:
         return f"Compare {vendors} for {use_case}{suffix}."
 
     return explicit_query
+
+def _setting_value(settings: Any | None, key: str, default: str) -> str:
+    if settings is None:
+        return default
+    if isinstance(settings, dict):
+        value = settings.get(key, default)
+    else:
+        value = getattr(settings, key, default)
+    value = str(value or "").strip()
+    return value or default
+
+
+def _follow_up_date(days: int) -> str:
+    return (datetime.now(UTC).date() + timedelta(days=max(0, min(days, 90)))).isoformat()
+
+
+def _validate_settings_values(values: dict[str, str]) -> list[str]:
+    errors: list[str] = []
+    public_url = values.get("public_url", "").strip()
+    if public_url and not public_url.startswith(("https://", "http://")):
+        errors.append("Public URL must start with https:// or http://.")
+    try:
+        days = int(values.get("default_follow_up_days", "7"))
+    except ValueError:
+        errors.append("Default follow-up days must be a number.")
+    else:
+        if days < 0 or days > 90:
+            errors.append("Default follow-up days must be between 0 and 90.")
+    return errors
+
 
 def _parse_urlencoded_form(body: bytes) -> dict[str, str]:
     parsed = parse_qs(body.decode("utf-8"), keep_blank_values=True)

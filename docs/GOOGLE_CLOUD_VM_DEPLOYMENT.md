@@ -459,3 +459,13 @@ Customer share links are available after deployment. Authenticated users create 
 ```
 
 The `share_links` SQLite table migrates automatically and is covered by the existing backup workflow.
+
+## Admin settings page
+
+After deploying the admin settings release, authenticated users can open:
+
+```text
+https://vendorverdict.docoply.com/dashboard/settings
+```
+
+The settings page stores non-secret defaults in SQLite, so existing database backups include it automatically. Keep secrets and webhook URLs in `/etc/vendorverdict/vendorverdict.env`.

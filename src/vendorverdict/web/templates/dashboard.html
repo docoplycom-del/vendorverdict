@@ -15,6 +15,7 @@
       <a class="button secondary" href="/dashboard/leads">Pilot requests ({{ lead_count }})</a>
       <a class="button secondary" href="/dashboard/pilots">Pilot workspaces ({{ pilot_count }})</a>
       <a class="button secondary" href="/dashboard/proposals">Proposals ({{ proposal_count }})</a>
+      <a class="button secondary" href="/dashboard/settings">Settings</a>
       <a class="button secondary" href="/docs">Open API docs</a>
     </div>
   </div>
@@ -24,6 +25,7 @@
     <div class="metric"><strong>{{ lead_count }}</strong><span>pilot requests</span></div>
     <div class="metric"><strong>{{ pilot_count }}</strong><span>pilot workspaces</span></div>
     <div class="metric"><strong>{{ proposal_count }}</strong><span>commercial proposals</span></div>
+    <div class="metric"><strong>{{ settings.follow_up_days_int }}</strong><span>default follow-up days</span></div>
   </div>
 </section>
 
@@ -40,6 +42,7 @@
     <a href="/dashboard/pilots">View pilots →</a>
     <a href="/dashboard/proposals">View proposals →</a>
     <a href="/reviews/new">Create report →</a>
+    <a href="/dashboard/settings">Settings →</a>
   </div>
 </section>
 

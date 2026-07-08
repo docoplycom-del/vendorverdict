@@ -485,4 +485,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-customer-share-links", template)
+        self.assertIn("style.css?v=20260708-admin-settings", template)

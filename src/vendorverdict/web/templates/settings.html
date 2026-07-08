@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Settings · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card settings-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Admin settings</p>
+      <h1>VendorVerdict settings</h1>
+      <p class="muted">Edit non-secret product defaults without changing the VM environment file.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard">Dashboard</a>
+      <a class="button secondary" href="/dashboard/proposals">Proposals</a>
+    </div>
+  </div>
+  {% if saved %}
+    <div class="notice success">Settings saved.</div>
+  {% endif %}
+  {% if errors %}
+    <div class="notice error">
+      <strong>Check these settings:</strong>
+      <ul>
+        {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</section>
+
+<section class="grid-two lead-detail-grid settings-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Runtime defaults</p>
+    <h2>Product and workflow defaults</h2>
+    <form class="lead-admin-form settings-form" method="post" action="/dashboard/settings">
+      {% for key, definition in definitions.items() %}
+        <label for="setting-{{ key }}">
+          {{ definition.label }}
+          <span class="field-help">{{ definition.description }}</span>
+        </label>
+        {% if key in ["default_proposal_billing"] %}
+          <textarea id="setting-{{ key }}" name="{{ key }}" rows="3">{{ settings[key] }}</textarea>
+        {% else %}
+          <input id="setting-{{ key }}" name="{{ key }}" value="{{ settings[key] }}" {% if key == "default_follow_up_days" %}type="number" min="0" max="90"{% endif %}>
+        {% endif %}
+      {% endfor %}
+      <button class="button" type="submit">Save settings</button>
+    </form>
+
+    <form class="inline-form reset-form" method="post" action="/dashboard/settings/reset">
+      <button class="button secondary" type="submit">Reset to environment defaults</button>
+    </form>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">What these settings affect</p>
+    <h2>Applied automatically</h2>
+    <ul class="check-list">
+      <li>New review forms use the default region and data sensitivity.</li>
+      <li>New commercial proposals use the default proposal price and billing wording.</li>
+      <li>Proposal delivery tracking uses the default follow-up date when none is entered.</li>
+      <li>Customer share links and lead follow-up links use the public URL when set.</li>
+    </ul>
+
+    <div class="mini-callout">
+      <strong>Secrets stay outside the dashboard.</strong>
+      <p>Passwords, webhook URLs, auth secrets, and API keys should remain in <code>/etc/vendorverdict/vendorverdict.env</code>.</p>
+    </div>
+
+    <h3>Environment fallback</h3>
+    <p class="muted">If a value is reset here, VendorVerdict falls back to the matching environment variable, then to the built-in default.</p>
+    <div class="table-wrap">
+      <table class="data-table settings-table">
+        <thead><tr><th>Setting</th><th>Env var</th><th>Set?</th></tr></thead>
+        <tbody>
+          {% for row in env_summary %}
+            <tr>
+              <td>{{ row.key.replace('_', ' ') }}</td>
+              <td><code>{{ row.env }}</code></td>
+              <td>{{ row.is_set }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+{% endblock %}

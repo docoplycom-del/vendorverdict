@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from urllib.parse import quote
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from uuid import uuid4
 
 from vendorverdict.pilot_outcomes import PilotOutcome
@@ -163,7 +163,7 @@ class ProposalStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
 
-    def create_from_pilot(self, pilot: PilotRecord, outcome: PilotOutcome | None = None) -> str:
+    def create_from_pilot(self, pilot: PilotRecord, outcome: PilotOutcome | None = None, *, settings: Mapping[str, str] | Any | None = None) -> str:
         existing = self.get_by_pilot_id(pilot.pilot_id)
         if existing is not None:
             return existing.proposal_id
@@ -171,7 +171,7 @@ class ProposalStore:
         proposal_id = str(uuid4())
         now = datetime.now(UTC).isoformat()
         package = package_from_pilot(pilot.package)
-        defaults = PACKAGE_DEFAULTS[package]
+        defaults = _proposal_defaults(package, settings=settings)
         company = pilot.company or pilot.contact_name or "Prospect"
         success_criteria = _success_criteria_from_outcome(outcome, pilot)
         next_step = _next_step_from_outcome(outcome)
@@ -430,6 +430,26 @@ class ProposalStore:
             follow_up_due=row["follow_up_due"] or "",
             last_follow_up_at=row["last_follow_up_at"] or "",
         )
+
+
+def _proposal_defaults(package: str, *, settings: Mapping[str, str] | Any | None = None) -> dict[str, str]:
+    defaults = dict(PACKAGE_DEFAULTS.get(package, PACKAGE_DEFAULTS["custom"]))
+    if settings is None:
+        return defaults
+
+    price = _setting_get(settings, "default_proposal_price")
+    billing = _setting_get(settings, "default_proposal_billing")
+    if price:
+        defaults["price"] = price
+    if billing:
+        defaults["billing"] = billing
+    return defaults
+
+
+def _setting_get(settings: Mapping[str, str] | Any, key: str) -> str:
+    if isinstance(settings, Mapping):
+        return str(settings.get(key, "") or "").strip()
+    return str(getattr(settings, key, "") or "").strip()
 
 
 def build_proposal_email(proposal: ProposalRecord) -> ProposalEmail:

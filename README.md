@@ -831,3 +831,7 @@ Customer proposal exports now use cleaner sales wording for the suggested next s
 ### Customer share links
 
 Reports and proposals can now be shared with customers through tokenized public pages. Create links from `/dashboard/reports/{report_id}` or `/dashboard/proposals/{proposal_id}`. Public customer URLs use `/share/report/{token}` and `/share/proposal/{token}` with PDF/Markdown downloads, while internal notes and dashboard workflows remain protected. See `docs/CUSTOMER_SHARE_LINKS.md`.
+
+### Admin settings page
+
+Authenticated users can edit non-secret runtime defaults at `/dashboard/settings`. The page controls default review region, data sensitivity, proposal price/billing, follow-up interval, public URL for share links, and operator email. Secrets such as auth passwords, webhooks, and API keys still remain in `/etc/vendorverdict/vendorverdict.env`. See `docs/ADMIN_SETTINGS.md`.

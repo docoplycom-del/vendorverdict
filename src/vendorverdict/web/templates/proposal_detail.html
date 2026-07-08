@@ -74,21 +74,21 @@
     <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
       <input type="hidden" name="action" value="mark_sent">
       <label for="follow-up-sent">Next follow-up date after sending</label>
-      <input id="follow-up-sent" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <input id="follow-up-sent" name="follow_up_due" type="date" value="{{ proposal.follow_up_due or default_follow_up_date }}">
       <button class="button" type="submit">Mark proposal sent</button>
     </form>
 
     <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
       <input type="hidden" name="action" value="mark_followed_up">
       <label for="follow-up-next">Next follow-up date</label>
-      <input id="follow-up-next" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <input id="follow-up-next" name="follow_up_due" type="date" value="{{ proposal.follow_up_due or default_follow_up_date }}">
       <button class="button secondary" type="submit">Mark followed up</button>
     </form>
 
     <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/delivery">
       <input type="hidden" name="action" value="schedule">
       <label for="follow-up-schedule">Schedule / change follow-up date</label>
-      <input id="follow-up-schedule" name="follow_up_due" type="date" value="{{ proposal.follow_up_due }}">
+      <input id="follow-up-schedule" name="follow_up_due" type="date" value="{{ proposal.follow_up_due or default_follow_up_date }}">
       <button class="button secondary" type="submit">Save follow-up date</button>
     </form>
   </article>
