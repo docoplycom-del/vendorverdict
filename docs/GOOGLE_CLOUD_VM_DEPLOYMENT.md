@@ -415,3 +415,8 @@ The protected dashboard includes a lead inbox at `/dashboard/leads` and a CSV ex
 ## Lead follow-up workflow
 
 After deploying the lead follow-up workflow, open `/dashboard/leads` and click `View lead` on any captured pilot request. The protected detail page includes status, notes, and copy/paste follow-up emails.
+
+
+## Pilot onboarding workflow
+
+After deployment, pilot workspaces are available at `/dashboard/pilots`. See `docs/PILOT_ONBOARDING_WORKFLOW.md`.

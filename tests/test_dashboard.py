@@ -197,6 +197,63 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(updated_detail.status_code, 200)
         self.assertIn("Replied using first template.", updated_detail.text)
 
+    def test_lead_can_be_converted_to_pilot_workspace(self) -> None:
+        response = self.client.post(
+            "/leads/request",
+            data={
+                "name": "Casey Buyer",
+                "email": "casey@example.com",
+                "company": "Pilot Co",
+                "vendors": "Notion, Airtable",
+                "use_case": "client delivery records",
+                "source": "pilot",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        inbox = self.client.get("/dashboard/leads")
+        self.assertEqual(inbox.status_code, 200)
+        import re
+        match = re.search(r'href="(/dashboard/leads/[^"]+)"[^>]*><strong>Casey Buyer</strong>', inbox.text)
+        self.assertIsNotNone(match)
+        detail_path = match.group(1)
+
+        detail = self.client.get(detail_path)
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn("Create pilot workspace", detail.text)
+
+        convert = self.client.post(
+            f"{detail_path}/pilot",
+            data={"package": "founding", "review_target": "20", "objective": "client delivery records"},
+            follow_redirects=False,
+        )
+        self.assertEqual(convert.status_code, 303)
+        self.assertTrue(convert.headers["location"].startswith("/dashboard/pilots/"))
+
+        pilot = self.client.get(convert.headers["location"])
+        self.assertEqual(pilot.status_code, 200)
+        self.assertIn("Pilot workspace", pilot.text)
+        self.assertIn("Pilot Co", pilot.text)
+        self.assertIn("Onboarding checklist", pilot.text)
+        self.assertIn("Book pilot scope call", pilot.text)
+
+        task_update = self.client.post(
+            convert.headers["location"] + "/tasks/scope_call",
+            data={"completed": "1"},
+            follow_redirects=False,
+        )
+        self.assertEqual(task_update.status_code, 303)
+
+        updated = self.client.get(convert.headers["location"])
+        self.assertEqual(updated.status_code, 200)
+        self.assertIn("Mark open", updated.text)
+
+        pilots = self.client.get("/dashboard/pilots")
+        self.assertEqual(pilots.status_code, 200)
+        self.assertIn("Pilot Co", pilots.text)
+        self.assertIn("Open workspace", pilots.text)
+
     def test_dashboard_can_run_sample_review(self) -> None:
         response = self.client.post("/reviews/sample", follow_redirects=False)
         self.assertEqual(response.status_code, 303)
@@ -310,4 +367,4 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-login-contrast-final", template)
+        self.assertIn("style.css?v=20260708-pilot-onboarding", template)

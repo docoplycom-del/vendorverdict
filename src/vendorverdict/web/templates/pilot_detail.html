@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Pilot · {{ pilot.company or pilot.contact_name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot workspace</p>
+      <h1>{{ pilot.company or pilot.contact_name }}</h1>
+      <p class="muted">{{ pilot.status.replace('_', ' ') }} · {{ pilot.package }} pilot · {{ pilot.progress_percent }}% checklist complete</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="mailto:{{ pilot.contact_email }}">Email customer</a>
+      {% if lead %}<a class="button secondary" href="/dashboard/leads/{{ lead.lead_id }}">View source lead</a>{% endif %}
+      <a class="button secondary" href="/dashboard/pilots">Back to pilots</a>
+    </div>
+  </div>
+
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ pilot.progress_percent }}%</strong><span>checklist complete</span></div>
+    <div class="metric"><strong>{{ pilot.completed_tasks }}/{{ pilot.total_tasks }}</strong><span>tasks complete</span></div>
+    <div class="metric"><strong>{{ pilot.review_target }}</strong><span>review target</span></div>
+  </div>
+
+  <div class="grid-two lead-detail-grid">
+    <article class="card compact-card">
+      <h2>Pilot details</h2>
+      <form class="lead-admin-form lead-detail-form" method="post" action="/dashboard/pilots/{{ pilot.pilot_id }}/update">
+        <label for="pilot-status">Status</label>
+        <select id="pilot-status" name="status">
+          {% for status in pilot_statuses %}
+            <option value="{{ status }}" {% if pilot.status == status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>
+          {% endfor %}
+        </select>
+        <label for="pilot-package">Package</label>
+        <select id="pilot-package" name="package">
+          {% for package in pilot_packages %}
+            <option value="{{ package }}" {% if pilot.package == package %}selected{% endif %}>{{ package }}</option>
+          {% endfor %}
+        </select>
+        <label for="review-target">Review target</label>
+        <input id="review-target" type="number" name="review_target" value="{{ pilot.review_target }}" min="1" max="200">
+        <label for="start-date">Start date</label>
+        <input id="start-date" type="date" name="start_date" value="{{ pilot.start_date }}">
+        <label for="end-date">End date</label>
+        <input id="end-date" type="date" name="end_date" value="{{ pilot.end_date }}">
+        <label for="objective">Objective</label>
+        <textarea id="objective" name="objective" rows="4">{{ pilot.objective }}</textarea>
+        <label for="pilot-notes">Internal notes</label>
+        <textarea id="pilot-notes" name="notes" rows="6" placeholder="Add owner, next meeting, blockers, commercial notes, and delivery risks.">{{ pilot.notes }}</textarea>
+        <button class="button" type="submit">Save pilot</button>
+      </form>
+    </article>
+
+    <article class="card compact-card">
+      <h2>Customer context</h2>
+      <dl class="detail-list">
+        <dt>Contact</dt><dd>{{ pilot.contact_name }}</dd>
+        <dt>Email</dt><dd><a href="mailto:{{ pilot.contact_email }}">{{ pilot.contact_email }}</a></dd>
+        <dt>Company</dt><dd>{{ pilot.company or '—' }}</dd>
+        <dt>Lead</dt><dd>{% if lead %}<a href="/dashboard/leads/{{ lead.lead_id }}">{{ lead.name }} request</a>{% else %}—{% endif %}</dd>
+        <dt>Created</dt><dd>{{ pilot.created_at[:19].replace('T', ' ') }}</dd>
+      </dl>
+    </article>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Onboarding checklist</p>
+      <h2>Delivery tasks</h2>
+      <p class="muted">Tick tasks as the paid pilot moves from setup to delivery and close-out.</p>
+    </div>
+  </div>
+  <div class="pilot-task-list">
+    {% for task in tasks %}
+      <form class="pilot-task-row {% if task.completed %}completed{% endif %}" method="post" action="/dashboard/pilots/{{ pilot.pilot_id }}/tasks/{{ task.task_key }}">
+        <input type="hidden" name="completed" value="{% if task.completed %}0{% else %}1{% endif %}">
+        <div>
+          <span class="pill">{{ task.category }}</span>
+          <strong>{{ task.label }}</strong>
+          {% if task.completed_at %}<small class="muted">Completed {{ task.completed_at[:19].replace('T', ' ') }}</small>{% endif %}
+        </div>
+        <button class="button secondary small-button" type="submit">{% if task.completed %}Mark open{% else %}Mark done{% endif %}</button>
+      </form>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

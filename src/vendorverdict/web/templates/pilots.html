@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}VendorVerdict Pilots{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Pilot delivery</p>
+      <h1>Pilot workspaces</h1>
+      <p class="muted">Track paid-pilot onboarding, delivery tasks, status, and next steps after a lead converts.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/pilots.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard/leads">Back to leads</a>
+    </div>
+  </div>
+
+  <div class="metric-grid lead-status-grid">
+    {% for status in pilot_statuses %}
+      <div class="metric small-metric"><strong>{{ status_counts.get(status, 0) }}</strong><span>{{ status.replace('_', ' ') }}</span></div>
+    {% endfor %}
+  </div>
+
+  {% if pilots %}
+    <div class="report-list pilot-list">
+      {% for pilot in pilots %}
+        <article class="card report-card pilot-card">
+          <div>
+            <p class="eyebrow">{{ pilot.status.replace('_', ' ') }} · {{ pilot.package }} pilot</p>
+            <h3>{{ pilot.company or pilot.contact_name }}</h3>
+            <p>{{ pilot.objective or 'No objective recorded' }}</p>
+            <p class="muted">Contact: {{ pilot.contact_name }} · {{ pilot.contact_email }}</p>
+          </div>
+          <div class="report-actions">
+            <span class="pill highlight">{{ pilot.progress_percent }}% checklist</span>
+            <span class="pill">{{ pilot.completed_tasks }}/{{ pilot.total_tasks }} tasks</span>
+            <span class="pill">Target: {{ pilot.review_target }} reviews</span>
+            <a class="button small" href="/dashboard/pilots/{{ pilot.pilot_id }}">Open workspace</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h2>No pilot workspaces yet</h2>
+      <p>Open a lead and create a pilot workspace when the prospect is ready to move forward.</p>
+      <a class="button" href="/dashboard/leads">Open leads</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

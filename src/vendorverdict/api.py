@@ -25,6 +25,7 @@ from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.lead_followups import build_lead_followup_templates
 from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
+from vendorverdict.pilots import PILOT_PACKAGES, PILOT_STATUSES, PilotStore
 from vendorverdict.pdf_export import export_report_pdf
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
@@ -186,6 +187,10 @@ def create_app(
     def lead_store() -> LeadStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return LeadStore(env_db or app.state.default_db_path)
+
+    def pilot_store() -> PilotStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return PilotStore(env_db or app.state.default_db_path)
 
     def resolved_export_dir() -> Path:
         return Path(
@@ -463,6 +468,7 @@ def create_app(
                 "request": request,
                 "reports": reports,
                 "lead_count": len(lead_store().list_leads(limit=200)),
+                "pilot_count": len(pilot_store().list_pilots(limit=200)),
                 "service": "VendorVerdict",
                 "version": __version__,
                 "auth": _auth_context(request),
@@ -635,6 +641,98 @@ def create_app(
                 "auth": _auth_context(request),
             },
         )
+
+    @app.post("/dashboard/leads/{lead_id}/pilot")
+    async def create_pilot_from_lead(request: Request, lead_id: str) -> RedirectResponse:
+        lead = lead_store().get_lead(lead_id)
+        if lead is None:
+            raise HTTPException(status_code=404, detail=f"Lead not found: {lead_id}")
+        form = _parse_urlencoded_form(await request.body())
+        pilot_id = pilot_store().create_from_lead(
+            lead,
+            package=form.get("package", "founding"),
+            objective=form.get("objective", lead.use_case),
+            review_target=form.get("review_target", "20"),
+            notes=form.get("notes", "Created from lead detail."),
+        )
+        if lead.status in {"new", "contacted", "qualified"}:
+            lead_store().update_lead_status(
+                lead_id,
+                status="won",
+                notes=(lead.notes + "\n" if lead.notes else "") + "Pilot workspace created.",
+            )
+        return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
+
+    @app.get("/dashboard/pilots", response_class=HTMLResponse)
+    def dashboard_pilots(request: Request) -> HTMLResponse:
+        pilots = pilot_store()
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pilots.html",
+            {
+                "request": request,
+                "pilots": pilots.list_pilots(limit=100),
+                "status_counts": pilots.status_counts(),
+                "pilot_statuses": PILOT_STATUSES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/pilots.csv")
+    def export_dashboard_pilots_csv() -> PlainTextResponse:
+        csv_text = pilot_store().export_csv(limit=2000)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-pilots.csv"'},
+        )
+
+    @app.get("/dashboard/pilots/{pilot_id}", response_class=HTMLResponse)
+    def dashboard_pilot_detail(request: Request, pilot_id: str) -> HTMLResponse:
+        pilots = pilot_store()
+        pilot = pilots.get_pilot(pilot_id)
+        if pilot is None:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        lead = lead_store().get_lead(pilot.lead_id) if pilot.lead_id else None
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pilot_detail.html",
+            {
+                "request": request,
+                "pilot": pilot,
+                "lead": lead,
+                "tasks": pilots.list_tasks(pilot_id),
+                "pilot_statuses": PILOT_STATUSES,
+                "pilot_packages": PILOT_PACKAGES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/dashboard/pilots/{pilot_id}/update")
+    async def update_dashboard_pilot(request: Request, pilot_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        updated = pilot_store().update_pilot(
+            pilot_id,
+            status=form.get("status", "planned"),
+            package=form.get("package", "founding"),
+            objective=form.get("objective", ""),
+            review_target=form.get("review_target", "20"),
+            start_date=form.get("start_date", ""),
+            end_date=form.get("end_date", ""),
+            notes=form.get("notes", ""),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Pilot not found: {pilot_id}")
+        return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
+
+    @app.post("/dashboard/pilots/{pilot_id}/tasks/{task_key}")
+    async def update_dashboard_pilot_task(request: Request, pilot_id: str, task_key: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        completed = form.get("completed", "") in {"1", "true", "on", "yes"}
+        updated = pilot_store().set_task_completed(pilot_id, task_key, completed)
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Pilot task not found: {pilot_id}/{task_key}")
+        return RedirectResponse(url=f"/dashboard/pilots/{pilot_id}", status_code=303)
 
     @app.get("/dashboard/reports/{report_id}", response_class=HTMLResponse)
     def dashboard_report_detail(request: Request, report_id: str) -> HTMLResponse:

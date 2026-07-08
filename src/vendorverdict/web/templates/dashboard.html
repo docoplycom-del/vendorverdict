@@ -13,6 +13,7 @@
       </form>
       <a class="button secondary" href="/demo">Public demo</a>
       <a class="button secondary" href="/dashboard/leads">Pilot requests ({{ lead_count }})</a>
+      <a class="button secondary" href="/dashboard/pilots">Pilot workspaces ({{ pilot_count }})</a>
       <a class="button secondary" href="/docs">Open API docs</a>
     </div>
   </div>
@@ -20,6 +21,7 @@
     <div class="metric"><strong>{{ reports|length }}</strong><span>recent reports</span></div>
     <div class="metric"><strong>PDF</strong><span>export ready</span></div>
     <div class="metric"><strong>{{ lead_count }}</strong><span>pilot requests</span></div>
+    <div class="metric"><strong>{{ pilot_count }}</strong><span>pilot workspaces</span></div>
   </div>
 </section>
 
@@ -33,6 +35,7 @@
       <button class="link-button" type="submit">Run sample review →</button>
     </form>
     <a href="/dashboard/leads">View leads →</a>
+    <a href="/dashboard/pilots">View pilots →</a>
     <a href="/reviews/new">Create report →</a>
   </div>
 </section>

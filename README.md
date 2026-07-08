@@ -789,3 +789,15 @@ The login form uses high-contrast auth inputs and autofill-safe CSS so admin use
 ### Lead follow-up workflow
 
 Captured pilot leads can now be opened from `/dashboard/leads/{lead_id}`. The detail page includes lead context, workflow status, internal notes, and copy/paste follow-up email templates for first reply, qualification questions, and the pilot package.
+
+### Pilot onboarding workflow
+
+Qualified leads can now be converted into protected pilot workspaces. Each workspace tracks package type, status, review target, start/end dates, internal notes, and a delivery checklist from scope call through final review.
+
+Protected URLs:
+
+```text
+/dashboard/pilots
+/dashboard/pilots/{pilot_id}
+/dashboard/pilots.csv
+```

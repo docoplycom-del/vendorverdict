@@ -10,6 +10,12 @@
     </div>
     <div class="hero-actions compact">
       <a class="button secondary" href="mailto:{{ lead.email }}">Email lead</a>
+      <form method="post" action="/dashboard/leads/{{ lead.lead_id }}/pilot" class="inline-form">
+        <input type="hidden" name="package" value="founding">
+        <input type="hidden" name="review_target" value="20">
+        <input type="hidden" name="objective" value="{{ lead.use_case or lead.message }}">
+        <button class="button" type="submit">Create pilot workspace</button>
+      </form>
       <a class="button secondary" href="/dashboard/leads.csv">Export CSV</a>
       <a class="button secondary" href="/dashboard/leads">Back to leads</a>
     </div>

@@ -654,3 +654,49 @@ html body button.button:not(.secondary) {
 .lead-detail-form textarea {
   min-height: 12rem;
 }
+
+/* Pilot onboarding workspace */
+.pilot-list .pilot-card {
+  align-items: center;
+}
+
+.pilot-metrics {
+  margin: 1rem 0 1.5rem;
+}
+
+.pilot-task-list {
+  display: grid;
+  gap: .85rem;
+}
+
+.pilot-task-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,.035);
+}
+
+.pilot-task-row.completed {
+  border-color: rgba(45, 212, 191, .45);
+  background: rgba(45, 212, 191, .08);
+}
+
+.pilot-task-row strong,
+.pilot-task-row small {
+  display: block;
+  margin-top: .35rem;
+}
+
+@media (max-width: 760px) {
+  .pilot-task-row {
+    display: block;
+  }
+  .pilot-task-row button {
+    margin-top: 1rem;
+    width: 100%;
+  }
+}
