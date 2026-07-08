@@ -480,3 +480,27 @@ https://vendorverdict.docoply.com/dashboard/readiness
 ```
 
 Use it to run the final lead → pilot → review → outcome → proposal → share-link smoke test before prospect outreach.
+
+## Optional proposal email sending
+
+Proposal email sending is optional. Keep real SMTP credentials in `/etc/vendorverdict/vendorverdict.env` only:
+
+```env
+VENDORVERDICT_EMAIL_SEND_ENABLED=1
+VENDORVERDICT_SMTP_HOST=smtp.example.com
+VENDORVERDICT_SMTP_PORT=587
+VENDORVERDICT_SMTP_USERNAME=your-smtp-username
+VENDORVERDICT_SMTP_PASSWORD=your-smtp-password
+VENDORVERDICT_SMTP_FROM=vendorverdict@docoply.com
+VENDORVERDICT_SMTP_FROM_NAME="VendorVerdict"
+VENDORVERDICT_SMTP_STARTTLS=1
+VENDORVERDICT_SMTP_TIMEOUT_SECONDS=15
+```
+
+Validate the env file before deploying:
+
+```bash
+sudo bash -lc 'set -a; source /etc/vendorverdict/vendorverdict.env; set +a; echo "$VENDORVERDICT_SMTP_FROM"'
+```
+
+Then run the safe deploy script. See `docs/PROPOSAL_EMAIL_SENDING.md`.

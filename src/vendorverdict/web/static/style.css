@@ -921,3 +921,14 @@ html body button.button:not(.secondary) {
     margin-top: 1rem;
   }
 }
+
+/* Proposal SMTP delivery notices */
+.notice.warning {
+  background: rgba(255, 214, 102, .14);
+  border-color: rgba(255, 214, 102, .38);
+  color: var(--text);
+}
+.delivery-card .notice,
+.compact-card .notice {
+  margin: 1rem 0;
+}

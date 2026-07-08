@@ -54,7 +54,10 @@
   <article class="card compact-card followup-card delivery-card">
     <p class="eyebrow">Proposal delivery</p>
     <h2>Send and track follow-up</h2>
-    <p class="muted">Use the mailto link to send the customer proposal, then mark it as sent and schedule the next follow-up.</p>
+    <p class="muted">Send the customer proposal by SMTP when configured, or use the mailto fallback and track follow-up manually.</p>
+    {% if delivery_notice %}
+      <div class="notice {{ delivery_notice.level }}">{{ delivery_notice.message }}</div>
+    {% endif %}
     <div class="hero-actions compact">
       <a class="button" href="{{ mailto_link }}">Open proposal email</a>
       <a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}.pdf">Download PDF</a>
@@ -68,6 +71,24 @@
     </dl>
   </article>
 
+  <article class="card compact-card">
+    <p class="eyebrow">Direct email sending</p>
+    <h2>Send proposal from VendorVerdict</h2>
+    {% if email_send_configured %}
+      <p class="muted">SMTP is configured. This sends the customer email and attaches the proposal PDF. If a customer share link exists, it is included in the email body.</p>
+      <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/send">
+        <label for="email-follow-up-sent">Next follow-up date after sending</label>
+        <input id="email-follow-up-sent" name="follow_up_due" type="date" value="{{ proposal.follow_up_due or default_follow_up_date }}">
+        <button class="button" type="submit">Send proposal email now</button>
+      </form>
+    {% else %}
+      <p class="muted">SMTP sending is not configured yet. You can still use the mailto link above, then mark the proposal as sent.</p>
+      <div class="notice warning">Missing email settings: {{ email_send_missing_fields|join(', ') }}</div>
+    {% endif %}
+  </article>
+</section>
+
+<section class="grid-two lead-detail-grid">
   <article class="card compact-card">
     <p class="eyebrow">Delivery actions</p>
     <h2>Update proposal tracking</h2>

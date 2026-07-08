@@ -16,9 +16,11 @@ class DashboardTests(unittest.TestCase):
         self.old_db = os.environ.get("VENDORVERDICT_API_DB_PATH")
         self.old_export = os.environ.get("VENDORVERDICT_API_EXPORT_DIR")
         self.old_live = os.environ.get("VENDORVERDICT_API_LIVE_EVIDENCE")
+        self.old_email_send = os.environ.get("VENDORVERDICT_EMAIL_SEND_ENABLED")
         os.environ["VENDORVERDICT_API_DB_PATH"] = os.path.join(self.tmp.name, "dashboard.sqlite3")
         os.environ["VENDORVERDICT_API_EXPORT_DIR"] = os.path.join(self.tmp.name, "reports")
         os.environ["VENDORVERDICT_API_LIVE_EVIDENCE"] = "0"
+        os.environ["VENDORVERDICT_EMAIL_SEND_ENABLED"] = "0"
         self.client = TestClient(app)
 
     def tearDown(self) -> None:
@@ -26,6 +28,7 @@ class DashboardTests(unittest.TestCase):
         _restore_env("VENDORVERDICT_API_DB_PATH", self.old_db)
         _restore_env("VENDORVERDICT_API_EXPORT_DIR", self.old_export)
         _restore_env("VENDORVERDICT_API_LIVE_EVIDENCE", self.old_live)
+        _restore_env("VENDORVERDICT_EMAIL_SEND_ENABLED", self.old_email_send)
 
 
     def test_public_landing_page_renders(self) -> None:
@@ -292,6 +295,8 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("Download customer PDF", proposal_detail.text)
         self.assertIn("Proposal delivery", proposal_detail.text)
         self.assertIn("Open proposal email", proposal_detail.text)
+        self.assertIn("Direct email sending", proposal_detail.text)
+        self.assertIn("SMTP sending is not configured yet", proposal_detail.text)
 
         proposal_update = self.client.post(
             proposal_create.headers["location"] + "/update",
@@ -314,6 +319,17 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(updated_proposal.status_code, 200)
         self.assertIn("£750/month", updated_proposal.text)
         self.assertIn("Sent to buyer.", updated_proposal.text)
+
+        send_without_smtp = self.client.post(
+            proposal_create.headers["location"] + "/send",
+            data={"follow_up_due": "2026-07-16"},
+            follow_redirects=False,
+        )
+        self.assertEqual(send_without_smtp.status_code, 303)
+        self.assertTrue(send_without_smtp.headers["location"].endswith("?delivery=not_configured"))
+        send_notice = self.client.get(send_without_smtp.headers["location"])
+        self.assertEqual(send_notice.status_code, 200)
+        self.assertIn("SMTP email sending is not configured", send_notice.text)
 
         delivery_update = self.client.post(
             proposal_create.headers["location"] + "/delivery",
@@ -485,7 +501,7 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260708-final-readiness", template)
+        self.assertIn("style.css?v=20260708-proposal-email-sending", template)
 
 class PilotReadinessTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -493,9 +509,11 @@ class PilotReadinessTests(unittest.TestCase):
         self.old_db = os.environ.get("VENDORVERDICT_API_DB_PATH")
         self.old_export = os.environ.get("VENDORVERDICT_API_EXPORT_DIR")
         self.old_live = os.environ.get("VENDORVERDICT_API_LIVE_EVIDENCE")
+        self.old_email_send = os.environ.get("VENDORVERDICT_EMAIL_SEND_ENABLED")
         os.environ["VENDORVERDICT_API_DB_PATH"] = os.path.join(self.tmp.name, "readiness.sqlite3")
         os.environ["VENDORVERDICT_API_EXPORT_DIR"] = os.path.join(self.tmp.name, "reports")
         os.environ["VENDORVERDICT_API_LIVE_EVIDENCE"] = "0"
+        os.environ["VENDORVERDICT_EMAIL_SEND_ENABLED"] = "0"
         self.client = TestClient(app)
 
     def tearDown(self) -> None:
@@ -503,6 +521,7 @@ class PilotReadinessTests(unittest.TestCase):
         _restore_env("VENDORVERDICT_API_DB_PATH", self.old_db)
         _restore_env("VENDORVERDICT_API_EXPORT_DIR", self.old_export)
         _restore_env("VENDORVERDICT_API_LIVE_EVIDENCE", self.old_live)
+        _restore_env("VENDORVERDICT_EMAIL_SEND_ENABLED", self.old_email_send)
 
     def test_pilot_readiness_page_renders_next_actions(self) -> None:
         response = self.client.get("/dashboard/readiness")
@@ -522,4 +541,4 @@ class PilotReadinessTests(unittest.TestCase):
 
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
         self.assertIn('/dashboard/readiness', template)
-        self.assertIn('style.css?v=20260708-final-readiness', template)
+        self.assertIn('style.css?v=20260708-proposal-email-sending', template)

@@ -839,3 +839,7 @@ Authenticated users can edit non-secret runtime defaults at `/dashboard/settings
 ### Pilot-readiness dashboard
 
 The production dashboard includes `/dashboard/readiness`, an end-to-end checklist for final pilot readiness. It covers public pages, lead capture, saved reports, pilot workspaces, proposals, customer share links, admin settings, and production operations.
+
+### Proposal email sending
+
+Commercial proposal pages now support optional SMTP sending. When `VENDORVERDICT_EMAIL_SEND_ENABLED=1` and SMTP settings are configured in `/etc/vendorverdict/vendorverdict.env`, `/dashboard/proposals/{proposal_id}` can send the customer proposal email directly, attach the customer PDF, include the customer share link when available, mark the proposal as sent, and schedule follow-up. Without SMTP, the existing mailto/manual tracking flow remains available. See `docs/PROPOSAL_EMAIL_SENDING.md`.

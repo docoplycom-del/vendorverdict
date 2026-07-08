@@ -32,13 +32,17 @@ from vendorverdict.proposals import (
     PROPOSAL_PACKAGES,
     PROPOSAL_STATUSES,
     ProposalStore,
-    build_proposal_email,
     build_proposal_mailto,
     customer_next_step,
     customer_success_criteria,
     render_proposal_markdown,
 )
 from vendorverdict.pdf_export import export_report_pdf
+from vendorverdict.proposal_email_delivery import (
+    build_customer_proposal_email,
+    get_proposal_email_settings,
+    send_customer_proposal_email,
+)
 from vendorverdict.proposal_pdf import export_proposal_pdf
 from vendorverdict.readiness import build_readiness_snapshot
 from vendorverdict.reporting import export_report_markdown, render_report_markdown
@@ -1081,9 +1085,13 @@ def create_app(
         outcome = None
         if pilot is not None:
             outcome = build_pilot_outcome(pilot, pilots.list_tasks(pilot.pilot_id), pilots.list_reviews(pilot.pilot_id))
-        email = build_proposal_email(proposal)
-        mailto_link = build_proposal_mailto(proposal)
         share = share_store().get_for_resource("proposal", proposal_id)
+        configured_settings = settings_store().get_settings()
+        share_url = _full_share_url(request, share, resource_type="proposal", public_url=configured_settings.public_url) if share else ""
+        email = build_customer_proposal_email(proposal, share_url=share_url)
+        mailto_link = build_proposal_mailto(proposal)
+        email_settings = get_proposal_email_settings()
+        delivery_notice = _proposal_delivery_notice(request.query_params.get("delivery", ""))
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -1097,8 +1105,12 @@ def create_app(
                 "proposal_statuses": PROPOSAL_STATUSES,
                 "proposal_packages": PROPOSAL_PACKAGES,
                 "share": share,
-                "share_url": _full_share_url(request, share, resource_type="proposal", public_url=settings_store().get_settings().public_url) if share else "",
-                "default_follow_up_date": _follow_up_date(settings_store().get_settings().follow_up_days_int),
+                "share_url": share_url,
+                "default_follow_up_date": _follow_up_date(configured_settings.follow_up_days_int),
+                "email_send_settings": email_settings,
+                "email_send_configured": email_settings.is_configured,
+                "email_send_missing_fields": email_settings.missing_fields,
+                "delivery_notice": delivery_notice,
                 "auth": _auth_context(request),
             },
         )
@@ -1110,6 +1122,33 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
         share_store().create_or_get("proposal", proposal_id, label=proposal.company)
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
+
+    @app.post("/dashboard/proposals/{proposal_id}/send")
+    async def send_dashboard_proposal_email(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        follow_up_due = form.get("follow_up_due", "") or _follow_up_date(settings_store().get_settings().follow_up_days_int)
+        proposals = proposal_store()
+        proposal = proposals.get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        email_settings = get_proposal_email_settings()
+        if not email_settings.is_configured:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?delivery=not_configured", status_code=303)
+
+        share = share_store().get_for_resource("proposal", proposal_id)
+        configured_settings = settings_store().get_settings()
+        share_url = _full_share_url(request, share, resource_type="proposal", public_url=configured_settings.public_url) if share else ""
+        pdf_path = export_proposal_pdf(proposal_id, output_dir=resolved_export_dir(), store=proposals)
+        result = send_customer_proposal_email(
+            proposal,
+            pdf_path=pdf_path,
+            share_url=share_url,
+            settings=email_settings,
+        )
+        if not result.sent:
+            return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?delivery=error", status_code=303)
+        proposals.mark_sent(proposal_id, follow_up_due=follow_up_due)
+        return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?delivery=sent", status_code=303)
 
     @app.post("/dashboard/proposals/{proposal_id}/delivery")
     async def update_dashboard_proposal_delivery(request: Request, proposal_id: str) -> RedirectResponse:
@@ -1554,6 +1593,15 @@ def _setting_value(settings: Any | None, key: str, default: str) -> str:
     value = str(value or "").strip()
     return value or default
 
+
+def _proposal_delivery_notice(value: str) -> dict[str, str]:
+    if value == "sent":
+        return {"level": "success", "message": "Proposal email sent and delivery state marked as sent."}
+    if value == "not_configured":
+        return {"level": "warning", "message": "SMTP email sending is not configured. Use the mailto link or add SMTP settings in the VM env file."}
+    if value == "error":
+        return {"level": "error", "message": "Proposal email could not be sent. Check SMTP settings and service logs."}
+    return {}
 
 def _follow_up_date(days: int) -> str:
     return (datetime.now(UTC).date() + timedelta(days=max(0, min(days, 90)))).isoformat()
