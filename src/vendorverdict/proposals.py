@@ -193,6 +193,19 @@ class ProposalEmail:
         return getattr(self, key)
 
 
+@dataclass(frozen=True)
+class PaymentEventRecord:
+    event_id: str
+    created_at: str
+    proposal_id: str
+    event_type: str
+    status: str
+    detail: str
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+
 class ProposalStore:
     """SQLite-backed proposal tracker for closing pilots into recurring work."""
 
@@ -399,19 +412,83 @@ class ProposalStore:
             conn.commit()
             return cursor.rowcount > 0
 
-    def mark_paid(self, proposal_id: str) -> bool:
+    def mark_paid(self, proposal_id: str, *, invoice_reference: str = "") -> bool:
         now = datetime.now(UTC).isoformat()
+        with closing(self._connect()) as conn:
+            if invoice_reference.strip():
+                cursor = conn.execute(
+                    """
+                    UPDATE proposals
+                    SET updated_at = ?, payment_status = 'paid', paid_at = ?, invoice_reference = ?
+                    WHERE id = ?
+                    """,
+                    (now, now, invoice_reference.strip(), proposal_id),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    UPDATE proposals
+                    SET updated_at = ?, payment_status = 'paid', paid_at = ?
+                    WHERE id = ?
+                    """,
+                    (now, now, proposal_id),
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def add_payment_event(
+        self,
+        *,
+        proposal_id: str,
+        event_id: str,
+        event_type: str,
+        status: str,
+        detail: str,
+    ) -> bool:
+        now = datetime.now(UTC).isoformat()
+        safe_event_id = (event_id or str(uuid4())).strip()
         with closing(self._connect()) as conn:
             cursor = conn.execute(
                 """
-                UPDATE proposals
-                SET updated_at = ?, payment_status = 'paid', paid_at = ?
-                WHERE id = ?
+                INSERT OR IGNORE INTO proposal_payment_events (
+                    event_id, created_at, proposal_id, event_type, status, detail
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (now, now, proposal_id),
+                (
+                    safe_event_id,
+                    now,
+                    proposal_id.strip(),
+                    event_type.strip(),
+                    status.strip(),
+                    detail.strip(),
+                ),
             )
             conn.commit()
             return cursor.rowcount > 0
+
+    def list_payment_events(self, proposal_id: str, *, limit: int = 20) -> list[PaymentEventRecord]:
+        safe_limit = max(1, min(limit, 100))
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM proposal_payment_events
+                WHERE proposal_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (proposal_id, safe_limit),
+            ).fetchall()
+        return [
+            PaymentEventRecord(
+                event_id=row["event_id"],
+                created_at=row["created_at"],
+                proposal_id=row["proposal_id"],
+                event_type=row["event_type"],
+                status=row["status"],
+                detail=row["detail"],
+            )
+            for row in rows
+        ]
 
     def payment_counts(self) -> dict[str, int]:
         counts = {status: 0 for status in PAYMENT_STATUSES}
@@ -513,6 +590,17 @@ class ProposalStore:
                 CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON proposals(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_proposals_pilot_id ON proposals(pilot_id);
                 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+
+                CREATE TABLE IF NOT EXISTS proposal_payment_events (
+                    event_id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    proposal_id TEXT NOT NULL DEFAULT '',
+                    event_type TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT '',
+                    detail TEXT NOT NULL DEFAULT ''
+                );
+                CREATE INDEX IF NOT EXISTS idx_proposal_payment_events_proposal_id
+                    ON proposal_payment_events(proposal_id, created_at DESC);
                 """
             )
             existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(proposals)").fetchall()}

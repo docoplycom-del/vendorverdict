@@ -529,3 +529,20 @@ VENDORVERDICT_STRIPE_TIMEOUT_SECONDS=15
 ```
 
 Restart/deploy after editing the env file. If Stripe is not configured, the dashboard keeps the manual invoice/payment link workflow.
+
+
+## Optional Stripe webhook reconciliation
+
+For automatic payment reconciliation, expose this public endpoint to Stripe:
+
+```text
+https://vendorverdict.docoply.com/webhooks/stripe
+```
+
+Then add the webhook secret to `/etc/vendorverdict/vendorverdict.env`:
+
+```env
+VENDORVERDICT_STRIPE_WEBHOOK_ENABLED=1
+VENDORVERDICT_STRIPE_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
+VENDORVERDICT_STRIPE_WEBHOOK_TOLERANCE_SECONDS=300
+```

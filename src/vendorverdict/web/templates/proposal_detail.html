@@ -147,8 +147,42 @@
       <dt>Payment link</dt><dd>{% if proposal.payment_url %}<a href="{{ proposal.payment_url }}" target="_blank" rel="noreferrer">Open saved payment link</a>{% else %}Not set{% endif %}</dd>
       <dt>Reference</dt><dd>{{ proposal.invoice_reference or '—' }}</dd>
     </dl>
-    <p class="muted">After the customer pays, verify it in your payment provider and click “Mark payment received”.</p>
+    {% if stripe_webhook_configured %}
+      <div class="notice success">Stripe webhook reconciliation is configured. Successful Checkout payments can mark this proposal as paid automatically.</div>
+    {% else %}
+      <div class="notice warning">Stripe webhook reconciliation is not configured: {{ stripe_webhook_missing_fields|join(', ') }}. Payment can still be marked manually.</div>
+    {% endif %}
+    <p class="muted">After the customer pays, Stripe webhooks can reconcile payment automatically when configured. You can still verify it in your payment provider and click “Mark payment received”.</p>
   </article>
+</section>
+
+<section class="card compact-card payment-events-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Payment reconciliation</p>
+      <h2>Stripe payment events</h2>
+      <p class="muted">Recent Stripe webhook events recorded for this proposal. This helps you confirm whether payment was automatically reconciled.</p>
+    </div>
+  </div>
+  {% if payment_events %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Detail</th></tr></thead>
+        <tbody>
+          {% for event in payment_events %}
+            <tr>
+              <td>{{ event.created_at[:19].replace('T', ' ') }}</td>
+              <td>{{ event.event_type }}</td>
+              <td><span class="status-pill">{{ event.status }}</span></td>
+              <td>{{ event.detail }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No Stripe payment events have been recorded for this proposal yet.</p>
+  {% endif %}
 </section>
 
 <section class="grid-two lead-detail-grid">

@@ -855,3 +855,8 @@ VendorVerdict includes a lightweight payment tracker for proposal follow-up: inv
 
 
 See docs/STRIPE_CHECKOUT_WORKFLOW.md for optional Stripe Checkout link creation.
+
+
+## Stripe webhook reconciliation
+
+VendorVerdict can optionally receive Stripe webhook events at `/webhooks/stripe` and mark proposals as paid after Stripe confirms Checkout payment. Configure `VENDORVERDICT_STRIPE_WEBHOOK_ENABLED=1` and `VENDORVERDICT_STRIPE_WEBHOOK_SECRET` in the production env file. See `docs/STRIPE_WEBHOOK_RECONCILIATION.md`.

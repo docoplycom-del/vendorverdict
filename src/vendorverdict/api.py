@@ -59,6 +59,12 @@ from vendorverdict.stripe_checkout import (
     create_stripe_checkout_session,
     get_stripe_checkout_settings,
 )
+from vendorverdict.stripe_webhooks import (
+    get_stripe_webhook_settings,
+    load_stripe_event,
+    process_stripe_webhook_event,
+    verify_stripe_signature,
+)
 from vendorverdict.storage import ReportRecord, ReportStore, ReportSummary
 from vendorverdict.tools.evidence import EvidenceCollector
 from vendorverdict.verdict import build_vendor_verdict, render_response, render_verdict
@@ -1107,7 +1113,9 @@ def create_app(
         payment_delivery_notice = _payment_delivery_notice(request.query_params.get("payment_delivery", ""))
         stripe_notice = _stripe_checkout_notice(request.query_params.get("stripe", ""))
         stripe_settings = get_stripe_checkout_settings()
+        stripe_webhook_settings = get_stripe_webhook_settings()
         payment_emails = build_payment_email_pair(proposal, share_url=share_url)
+        payment_events = proposals.list_payment_events(proposal_id)
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -1139,6 +1147,9 @@ def create_app(
                 "stripe_checkout_configured": stripe_settings.is_configured,
                 "stripe_checkout_missing_fields": stripe_settings.missing_fields,
                 "stripe_checkout_notice": stripe_notice,
+                "stripe_webhook_configured": stripe_webhook_settings.is_configured,
+                "stripe_webhook_missing_fields": stripe_webhook_settings.missing_fields,
+                "payment_events": payment_events,
                 "default_checkout_amount": amount_from_price_text(proposal.proposed_price),
                 "auth": _auth_context(request),
             },
@@ -1258,6 +1269,44 @@ def create_app(
             invoice_reference=result.session_id,
         )
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}?stripe=created", status_code=303)
+
+    @app.post("/webhooks/stripe")
+    async def stripe_webhook(request: Request) -> JSONResponse:
+        settings = get_stripe_webhook_settings()
+        if not settings.is_configured:
+            return JSONResponse(
+                {
+                    "status": "not_configured",
+                    "missing_fields": settings.missing_fields,
+                },
+                status_code=503,
+            )
+
+        payload = await request.body()
+        signature_header = request.headers.get("stripe-signature", "")
+        if not verify_stripe_signature(
+            payload,
+            signature_header,
+            settings.webhook_secret,
+            tolerance_seconds=settings.tolerance_seconds,
+        ):
+            return JSONResponse({"status": "invalid_signature"}, status_code=400)
+
+        try:
+            event = load_stripe_event(payload)
+        except ValueError as exc:
+            return JSONResponse({"status": "invalid_payload", "detail": str(exc)}, status_code=400)
+
+        result = process_stripe_webhook_event(event, proposal_store())
+        return JSONResponse(
+            {
+                "status": "processed" if result.processed else "ignored",
+                "proposal_id": result.proposal_id,
+                "event_type": result.event_type,
+                "event_id": result.event_id,
+                "detail": result.detail,
+            }
+        )
 
 
     @app.post("/dashboard/proposals/{proposal_id}/payment/send")
@@ -1469,6 +1518,7 @@ def _is_public_path(path: str) -> bool:
         "/privacy",
         "/disclaimer",
         "/leads/request",
+        "/webhooks/stripe",
         "/health",
         "/login",
         "/logout",
