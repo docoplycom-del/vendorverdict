@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 import sqlite3
 from contextlib import closing
@@ -55,6 +56,7 @@ class CustomerRecord:
     renewal_date: str = ""
     onboarding_notes: str = ""
     internal_notes: str = ""
+    review_count: int = 0
 
     def __getitem__(self, key: str) -> Any:
         mapping = {
@@ -75,6 +77,10 @@ class CustomerRecord:
             "renewal_date": self.renewal_date,
             "onboarding_notes": self.onboarding_notes,
             "internal_notes": self.internal_notes,
+            "review_count": self.review_count,
+            "reviews_used": self.review_count,
+            "reviews_remaining": self.reviews_remaining,
+            "usage_percent": self.usage_percent,
             "billing_label": self.billing_label,
         }
         return mapping[key]
@@ -100,6 +106,57 @@ class CustomerRecord:
         if self.renewal_date:
             return f"{label} · renews {self.renewal_date}"
         return label
+
+    @property
+    def reviews_remaining(self) -> int:
+        if self.review_allowance <= 0:
+            return 0
+        return max(0, self.review_allowance - self.review_count)
+
+    @property
+    def usage_percent(self) -> int:
+        if self.review_allowance <= 0:
+            return 0
+        return min(100, round((self.review_count / self.review_allowance) * 100))
+
+
+@dataclass(frozen=True)
+class CustomerReview:
+    customer_id: str
+    report_id: str
+    created_at: str
+    label: str
+    status: str
+    notes: str
+    raw_query: str = ""
+    vendors: tuple[str, ...] = ()
+    use_case: str = ""
+    recommended_vendor: str = ""
+    overall_confidence: str = ""
+
+    def __getitem__(self, key: str) -> Any:
+        mapping = {
+            "customer_id": self.customer_id,
+            "report_id": self.report_id,
+            "created_at": self.created_at,
+            "label": self.label,
+            "status": self.status,
+            "notes": self.notes,
+            "raw_query": self.raw_query,
+            "vendors": self.vendors,
+            "use_case": self.use_case,
+            "recommended_vendor": self.recommended_vendor,
+            "recommendation": self.recommended_vendor,
+            "overall_confidence": self.overall_confidence,
+            "confidence": self.overall_confidence,
+        }
+        return mapping[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
 
 class CustomerStore:
@@ -173,20 +230,53 @@ class CustomerStore:
         safe_limit = max(1, min(limit, 2000))
         with closing(self._connect()) as conn:
             rows = conn.execute(
-                "SELECT * FROM customer_accounts ORDER BY created_at DESC LIMIT ?",
+                """
+                SELECT ca.*, COALESCE(r.review_count, 0) AS review_count
+                FROM customer_accounts ca
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) AS review_count
+                    FROM customer_reviews
+                    GROUP BY customer_id
+                ) r ON r.customer_id = ca.id
+                ORDER BY ca.created_at DESC
+                LIMIT ?
+                """,
                 (safe_limit,),
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
 
     def get_customer(self, customer_id: str) -> CustomerRecord | None:
         with closing(self._connect()) as conn:
-            row = conn.execute("SELECT * FROM customer_accounts WHERE id = ?", (customer_id,)).fetchone()
+            row = conn.execute(
+                """
+                SELECT ca.*, COALESCE(r.review_count, 0) AS review_count
+                FROM customer_accounts ca
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) AS review_count
+                    FROM customer_reviews
+                    GROUP BY customer_id
+                ) r ON r.customer_id = ca.id
+                WHERE ca.id = ?
+                """,
+                (customer_id,),
+            ).fetchone()
         return self._row_to_record(row) if row is not None else None
 
     def get_by_proposal_id(self, proposal_id: str) -> CustomerRecord | None:
         with closing(self._connect()) as conn:
             row = conn.execute(
-                "SELECT * FROM customer_accounts WHERE proposal_id = ? ORDER BY created_at DESC LIMIT 1",
+                """
+                SELECT ca.*, COALESCE(r.review_count, 0) AS review_count
+                FROM customer_accounts ca
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) AS review_count
+                    FROM customer_reviews
+                    GROUP BY customer_id
+                ) r ON r.customer_id = ca.id
+                WHERE ca.proposal_id = ?
+                ORDER BY ca.created_at DESC
+                LIMIT 1
+                """,
                 (proposal_id,),
             ).fetchone()
         return self._row_to_record(row) if row is not None else None
@@ -228,6 +318,101 @@ class CustomerStore:
             conn.commit()
             return cursor.rowcount > 0
 
+    def link_report(
+        self,
+        customer_id: str,
+        report_id: str,
+        *,
+        label: str = "",
+        status: str = "completed",
+        notes: str = "",
+    ) -> bool:
+        if self.get_customer(customer_id) is None:
+            return False
+        created_at = datetime.now(UTC).isoformat()
+        safe_label = (label or "Customer vendor review").strip()
+        safe_status = (status or "completed").strip().lower().replace(" ", "_")
+        with closing(self._connect()) as conn:
+            conn.execute(
+                """
+                INSERT INTO customer_reviews (customer_id, report_id, created_at, label, status, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(customer_id, report_id) DO UPDATE SET
+                    label = excluded.label,
+                    status = excluded.status,
+                    notes = excluded.notes
+                """,
+                (customer_id, report_id, created_at, safe_label, safe_status, notes.strip()),
+            )
+            conn.commit()
+        return True
+
+    def list_reviews(self, customer_id: str) -> list[CustomerReview]:
+        with closing(self._connect()) as conn:
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT cr.customer_id, cr.report_id, cr.created_at, cr.label, cr.status, cr.notes,
+                           r.raw_query, r.vendors_json, r.use_case, r.recommended_vendor, r.overall_confidence
+                    FROM customer_reviews cr
+                    LEFT JOIN reports r ON r.id = cr.report_id
+                    WHERE cr.customer_id = ?
+                    ORDER BY cr.created_at DESC
+                    """,
+                    (customer_id,),
+                ).fetchall()
+            except sqlite3.OperationalError as exc:
+                if "no such table: reports" not in str(exc):
+                    raise
+                rows = conn.execute(
+                    """
+                    SELECT customer_id, report_id, created_at, label, status, notes,
+                           '' AS raw_query, '[]' AS vendors_json, '' AS use_case,
+                           '' AS recommended_vendor, '' AS overall_confidence
+                    FROM customer_reviews
+                    WHERE customer_id = ?
+                    ORDER BY created_at DESC
+                    """,
+                    (customer_id,),
+                ).fetchall()
+        return [self._row_to_review(row) for row in rows]
+
+    def review_count(self, customer_id: str) -> int:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM customer_reviews WHERE customer_id = ?",
+                (customer_id,),
+            ).fetchone()
+        return int(row["count"] or 0) if row is not None else 0
+
+    def remaining_reviews(self, customer_id: str) -> int:
+        customer = self.get_customer(customer_id)
+        if customer is None or customer.review_allowance <= 0:
+            return 0
+        return max(0, customer.review_allowance - self.review_count(customer_id))
+
+    def export_reviews_csv(self, customer_id: str) -> str:
+        reviews = self.list_reviews(customer_id)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "created_at", "label", "status", "report_id", "vendors", "use_case",
+            "recommended_vendor", "confidence", "notes",
+        ])
+        for review in reviews:
+            writer.writerow([
+                review.created_at,
+                review.label,
+                review.status,
+                review.report_id,
+                ", ".join(review.vendors),
+                review.use_case,
+                review.recommended_vendor,
+                review.overall_confidence,
+                review.notes,
+            ])
+        return output.getvalue()
+
     def status_counts(self) -> dict[str, int]:
         counts = {status: 0 for status in CUSTOMER_STATUSES}
         with closing(self._connect()) as conn:
@@ -249,8 +434,8 @@ class CustomerStore:
         writer = csv.writer(output)
         writer.writerow([
             "created_at", "updated_at", "company", "contact_name", "contact_email", "proposal_id",
-            "pilot_id", "package", "status", "billing_status", "review_allowance", "renewal_date",
-            "onboarding_notes", "internal_notes",
+            "pilot_id", "package", "status", "billing_status", "review_allowance", "reviews_used",
+            "reviews_remaining", "usage_percent", "renewal_date", "onboarding_notes", "internal_notes",
         ])
         for customer in self.list_customers(limit=limit):
             writer.writerow([
@@ -265,6 +450,9 @@ class CustomerStore:
                 customer.status,
                 customer.billing_status,
                 customer.review_allowance,
+                customer.review_count,
+                customer.reviews_remaining,
+                customer.usage_percent,
                 customer.renewal_date,
                 customer.onboarding_notes,
                 customer.internal_notes,
@@ -292,9 +480,21 @@ class CustomerStore:
                     onboarding_notes TEXT NOT NULL DEFAULT '',
                     internal_notes TEXT NOT NULL DEFAULT ''
                 );
+                CREATE TABLE IF NOT EXISTS customer_reviews (
+                    customer_id TEXT NOT NULL,
+                    report_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    label TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'completed',
+                    notes TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (customer_id, report_id)
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_customer_accounts_created_at ON customer_accounts(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_customer_accounts_proposal_id ON customer_accounts(proposal_id);
                 CREATE INDEX IF NOT EXISTS idx_customer_accounts_status ON customer_accounts(status);
+                CREATE INDEX IF NOT EXISTS idx_customer_reviews_customer_id ON customer_reviews(customer_id);
+                CREATE INDEX IF NOT EXISTS idx_customer_reviews_report_id ON customer_reviews(report_id);
                 """
             )
             existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(customer_accounts)").fetchall()}
@@ -333,6 +533,30 @@ class CustomerStore:
             renewal_date=row["renewal_date"] or "",
             onboarding_notes=row["onboarding_notes"] or "",
             internal_notes=row["internal_notes"] or "",
+            review_count=int(row["review_count"] or 0) if "review_count" in row.keys() else 0,
+        )
+
+    @staticmethod
+    def _row_to_review(row: sqlite3.Row) -> CustomerReview:
+        vendors: tuple[str, ...] = ()
+        vendors_json = row["vendors_json"] if "vendors_json" in row.keys() else None
+        if vendors_json:
+            try:
+                vendors = tuple(json.loads(vendors_json))
+            except (TypeError, ValueError):
+                vendors = ()
+        return CustomerReview(
+            customer_id=row["customer_id"],
+            report_id=row["report_id"],
+            created_at=row["created_at"],
+            label=row["label"] or "Customer vendor review",
+            status=row["status"] or "completed",
+            notes=row["notes"] or "",
+            raw_query=row["raw_query"] or "",
+            vendors=vendors,
+            use_case=row["use_case"] or "",
+            recommended_vendor=row["recommended_vendor"] or "",
+            overall_confidence=row["overall_confidence"] or "",
         )
 
 

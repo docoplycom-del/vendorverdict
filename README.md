@@ -864,3 +864,7 @@ VendorVerdict can optionally receive Stripe webhook events at `/webhooks/stripe`
 ## Customer activation workflow
 
 After a proposal is accepted or paid, VendorVerdict can now create a protected customer account from `/dashboard/proposals/{proposal_id}`. Customer workspaces live at `/dashboard/customers` and track onboarding status, billing status, review allowance, renewal date, linked proposal/pilot, and internal notes. See `docs/CUSTOMER_ACTIVATION_WORKFLOW.md`.
+
+## Customer review operations
+
+Customer accounts can now run recurring VendorVerdict reviews after activation. Open a customer workspace at `/dashboard/customers/{customer_id}`, run a vendor review, and VendorVerdict will save the report, link it to the customer, and track usage against the monthly review allowance. Export customer review history from `/dashboard/customers/{customer_id}/reviews.csv`.

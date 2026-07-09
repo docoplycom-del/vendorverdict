@@ -989,6 +989,7 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
         proposal = proposal_store().get_proposal(customer.proposal_id) if customer.proposal_id else None
         pilot = pilot_store().get_pilot(customer.pilot_id) if customer.pilot_id else None
+        runtime_settings = settings_store().get_settings()
         return TEMPLATES.TemplateResponse(
             request,
             "customer_detail.html",
@@ -997,6 +998,12 @@ def create_app(
                 "customer": customer,
                 "proposal": proposal,
                 "pilot": pilot,
+                "reviews": customers.list_reviews(customer_id),
+                "review_count": customers.review_count(customer_id),
+                "reviews_remaining": customers.remaining_reviews(customer_id),
+                "review_values": _dashboard_default_values(runtime_settings),
+                "review_errors": [],
+                "draft_response": "",
                 "customer_statuses": CUSTOMER_STATUSES,
                 "billing_statuses": BILLING_STATUSES,
                 "customer_packages": CUSTOMER_PACKAGES,
@@ -1019,6 +1026,102 @@ def create_app(
         )
         if not updated:
             raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
+
+
+    @app.get("/dashboard/customers/{customer_id}/reviews.csv")
+    def export_dashboard_customer_reviews_csv(customer_id: str) -> PlainTextResponse:
+        customers = customer_store()
+        if customers.get_customer(customer_id) is None:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        csv_text = customers.export_reviews_csv(customer_id)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-customer-reviews.csv"'},
+        )
+
+    @app.post("/dashboard/customers/{customer_id}/reviews/run", response_class=HTMLResponse)
+    async def run_dashboard_customer_review(request: Request, customer_id: str):
+        customers = customer_store()
+        customer = customers.get_customer(customer_id)
+        if customer is None:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+
+        form = _parse_urlencoded_form(await request.body())
+        query = _compose_dashboard_query(form)
+        values = _dashboard_values_from_form(form, query=query)
+        review_label = (form.get("label") or values.get("use_case") or "Customer vendor review").strip()
+        use_live_evidence = form.get("live_evidence") in {"1", "true", "on", "yes"}
+        export_markdown = form.get("export_markdown") in {"1", "true", "on", "yes"}
+        export_pdf = form.get("export_pdf") in {"1", "true", "on", "yes"}
+
+        errors: list[str] = []
+        if len(query) < 5:
+            errors.append("Enter vendors and a use case before running a customer review.")
+
+        def render_customer_with_errors(status_code: int, draft_response: str = "") -> HTMLResponse:
+            proposal = proposal_store().get_proposal(customer.proposal_id) if customer.proposal_id else None
+            pilot = pilot_store().get_pilot(customer.pilot_id) if customer.pilot_id else None
+            refreshed = customers.get_customer(customer_id) or customer
+            return TEMPLATES.TemplateResponse(
+                request,
+                "customer_detail.html",
+                {
+                    "request": request,
+                    "customer": refreshed,
+                    "proposal": proposal,
+                    "pilot": pilot,
+                    "reviews": customers.list_reviews(customer_id),
+                    "review_count": customers.review_count(customer_id),
+                    "reviews_remaining": customers.remaining_reviews(customer_id),
+                    "review_values": {**values, "label": review_label},
+                    "review_errors": errors,
+                    "draft_response": draft_response,
+                    "customer_statuses": CUSTOMER_STATUSES,
+                    "billing_statuses": BILLING_STATUSES,
+                    "customer_packages": CUSTOMER_PACKAGES,
+                    "auth": _auth_context(request),
+                },
+                status_code=status_code,
+            )
+
+        if errors:
+            return render_customer_with_errors(400)
+
+        collector = EvidenceCollector(use_live_checks=use_live_evidence)
+        verdict = build_vendor_verdict(query, collector=collector)
+        report_text = render_verdict(verdict)
+
+        if verdict.request.missing_fields or verdict.recommendation is None:
+            errors.append("VendorVerdict needs clarification before it can save this customer review.")
+            return render_customer_with_errors(200, draft_response=report_text)
+
+        report_store = store()
+        report_id = report_store.save_report(
+            verdict,
+            report_text,
+            raw_query=query,
+            metadata={
+                "client": "vendorverdict-customer-workspace",
+                "customer_id": customer_id,
+                "customer_company": customer.company,
+                "customer_review_label": review_label,
+                "live_evidence": use_live_evidence,
+                "dashboard_form": {
+                    "vendors": values.get("vendors", ""),
+                    "use_case": values.get("use_case", ""),
+                    "team_size": values.get("team_size", ""),
+                    "region": values.get("region", ""),
+                    "data_sensitivity": values.get("data_sensitivity", ""),
+                },
+            },
+        )
+        if export_markdown:
+            export_report_markdown(report_id, output_dir=resolved_export_dir(), store=report_store)
+        if export_pdf:
+            export_report_pdf(report_id, output_dir=resolved_export_dir(), store=report_store)
+        customers.link_report(customer_id, report_id, label=review_label, status="completed")
         return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
 
     @app.get("/dashboard/proposals", response_class=HTMLResponse)
