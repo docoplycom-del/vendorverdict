@@ -25,6 +25,7 @@ from vendorverdict.auth import (
 from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_HEALTH_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
 from vendorverdict.business_metrics import build_business_metrics_snapshot, render_business_metrics_markdown
+from vendorverdict.activity import ActivityStore
 from vendorverdict.customer_success import (
     build_customer_success_emails,
     build_customer_success_snapshot,
@@ -252,6 +253,10 @@ def create_app(
     def settings_store() -> SettingsStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return SettingsStore(env_db or app.state.default_db_path)
+
+    def activity_store() -> ActivityStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return ActivityStore(env_db or app.state.default_db_path)
 
     def resolved_export_dir() -> Path:
         return Path(
@@ -578,6 +583,38 @@ def create_app(
             render_business_metrics_markdown(snapshot),
             media_type="text/markdown; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="vendorverdict-business-metrics.md"'},
+        )
+
+
+    @app.get("/dashboard/activity", response_class=HTMLResponse)
+    def dashboard_activity(request: Request, limit: int = 100) -> HTMLResponse:
+        snapshot = activity_store().build_snapshot(limit=limit)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "activity.html",
+            {
+                "request": request,
+                "snapshot": snapshot,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/activity.md")
+    def export_dashboard_activity_markdown(limit: int = 100) -> PlainTextResponse:
+        markdown = activity_store().render_markdown(limit=limit)
+        return PlainTextResponse(
+            markdown,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-activity-timeline.md"'},
+        )
+
+    @app.get("/dashboard/activity.csv")
+    def export_dashboard_activity_csv(limit: int = 500) -> PlainTextResponse:
+        csv_text = activity_store().render_csv(limit=limit)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-activity-timeline.csv"'},
         )
 
     @app.get("/dashboard/readiness", response_class=HTMLResponse)

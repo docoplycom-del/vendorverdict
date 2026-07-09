@@ -560,3 +560,8 @@ The dashboard includes `/dashboard/customers` and per-customer workspaces with h
 
 - `/dashboard/metrics` - authenticated business metrics and funnel snapshot.
 Use `/dashboard/metrics.md` for a Markdown export.
+
+
+## Activity timeline
+
+The protected `/dashboard/activity` route provides a read-only operator timeline. It is backed by the existing SQLite database and is included automatically in normal backups.

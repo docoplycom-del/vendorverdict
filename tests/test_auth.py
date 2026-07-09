@@ -147,6 +147,14 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertTrue(response.headers["location"].startswith("/login"))
 
+
+    def test_dashboard_activity_requires_authentication(self) -> None:
+        for path in ["/dashboard/activity", "/dashboard/activity.md", "/dashboard/activity.csv"]:
+            with self.subTest(path=path):
+                response = self.client.get(path, follow_redirects=False)
+                self.assertEqual(response.status_code, 303)
+                self.assertTrue(response.headers["location"].startswith("/login"))
+
     def test_dashboard_settings_requires_authentication(self) -> None:
         response = self.client.get("/dashboard/settings", follow_redirects=False)
         self.assertEqual(response.status_code, 303)

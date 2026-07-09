@@ -554,7 +554,7 @@ class ContrastCssTests(unittest.TestCase):
 
     def test_stylesheet_is_versioned_to_break_browser_cache(self):
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
-        self.assertIn("style.css?v=20260709-business-metrics", template)
+        self.assertIn("style.css?v=20260709-activity-timeline", template)
 
 class PilotReadinessTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -594,4 +594,4 @@ class PilotReadinessTests(unittest.TestCase):
 
         template = Path("src/vendorverdict/web/templates/base.html").read_text(encoding="utf-8")
         self.assertIn('/dashboard/readiness', template)
-        self.assertIn('style.css?v=20260709-business-metrics', template)
+        self.assertIn('style.css?v=20260709-activity-timeline', template)

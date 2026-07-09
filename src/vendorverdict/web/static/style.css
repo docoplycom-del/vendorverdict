@@ -1003,3 +1003,14 @@ html body button.button:not(.secondary) {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Activity timeline */
+.activity-table-card { padding: 0; overflow: hidden; }
+.activity-table th,
+.activity-table td { vertical-align: top; }
+.activity-table td:nth-child(4) { min-width: 280px; }
+.activity-table .pill { white-space: nowrap; }
+@media (max-width: 780px) {
+  .activity-table th:nth-child(4), .activity-table td:nth-child(4) { min-width: 220px; }
+}

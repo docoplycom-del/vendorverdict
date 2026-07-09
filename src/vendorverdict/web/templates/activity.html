@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Activity timeline · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Operator timeline</p>
+      <h1>Activity timeline</h1>
+      <p class="lead">A single audit-style view of recent VendorVerdict activity across leads, pilots, proposals, payments, share links, customers, and reports.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/activity.md">Export Markdown</a>
+      <a class="button secondary" href="/dashboard/activity.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard/metrics">Metrics</a>
+      <a class="button secondary" href="/dashboard">Dashboard</a>
+    </div>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ snapshot.total_count }}</strong><span>recent events</span></div>
+    <div class="metric"><strong>{{ snapshot.category_counts|length }}</strong><span>categories</span></div>
+    <div class="metric"><strong>{{ snapshot.latest_activity_at[:10] if snapshot.latest_activity_at else '—' }}</strong><span>latest activity</span></div>
+  </div>
+</section>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Category summary</p>
+    <h2>What happened recently</h2>
+    {% if snapshot.category_counts %}
+      <div class="metric-grid mini-metrics">
+        {% for category, count in snapshot.category_counts.items() %}
+          <div class="metric"><strong>{{ count }}</strong><span>{{ category }}</span></div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">No activity has been recorded yet.</p>
+    {% endif %}
+  </article>
+  <article class="card compact-card">
+    <p class="eyebrow">Use this before follow-up</p>
+    <h2>Why it matters</h2>
+    <ul class="check-list action-list">
+      <li>Check what changed before a prospect or customer call.</li>
+      <li>Export the timeline for your own operating notes.</li>
+      <li>Verify payment, proposal, share-link, and customer review events in one place.</li>
+    </ul>
+  </article>
+</section>
+
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Recent activity</p>
+    <h2>Timeline</h2>
+  </div>
+  <div class="section-actions">
+    <a href="/dashboard/proposals">Proposals →</a>
+    <a href="/dashboard/customers">Customers →</a>
+    <a href="/dashboard">Reports →</a>
+  </div>
+</section>
+
+{% if snapshot.items %}
+  <div class="table-wrap card activity-table-card">
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Type</th>
+          <th>Activity</th>
+          <th>Detail</th>
+          <th>Status</th>
+          <th>Open</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in snapshot.items %}
+          <tr>
+            <td><span class="muted">{{ item.occurred_at[:19].replace('T', ' ') }}</span></td>
+            <td><span class="pill">{{ item.category }}</span></td>
+            <td><strong>{{ item.title }}</strong></td>
+            <td>{{ item.detail }}</td>
+            <td>{% if item.status %}<span class="pill highlight">{{ item.status }}</span>{% endif %}</td>
+            <td>{% if item.href %}<a href="{{ item.href }}">Open →</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty">
+    <h3>No activity yet</h3>
+    <p>Create a lead, report, pilot, proposal, customer share link, or customer account to populate the activity timeline.</p>
+  </div>
+{% endif %}
+{% endblock %}
