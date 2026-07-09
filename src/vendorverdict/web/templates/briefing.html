@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Operator briefing · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Daily operating view</p>
+      <h1>Operator briefing</h1>
+      <p class="lead">A single pre-call view of what needs attention across leads, pilots, proposals, payments, customers, and recent activity.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/briefing.md">Export Markdown</a>
+      <a class="button secondary" href="/dashboard/metrics">Metrics</a>
+      <a class="button secondary" href="/dashboard/activity">Activity</a>
+    </div>
+  </div>
+  <div class="callout success briefing-headline">
+    <p class="eyebrow">{{ briefing.health_label }}</p>
+    <h2>{{ briefing.headline }}</h2>
+    <p class="muted">Generated {{ briefing.generated_at }}</p>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ briefing.metrics.lead_count }}</strong><span>leads</span></div>
+    <div class="metric"><strong>{{ briefing.metrics.pilot_count }}</strong><span>pilots</span></div>
+    <div class="metric"><strong>{{ briefing.metrics.proposal_count }}</strong><span>proposals</span></div>
+    <div class="metric"><strong>{{ briefing.metrics.paid_proposal_count }}</strong><span>paid proposals</span></div>
+    <div class="metric"><strong>{{ briefing.metrics.customer_count }}</strong><span>customers</span></div>
+    <div class="metric"><strong>{{ briefing.urgent_count }}</strong><span>urgent actions</span></div>
+  </div>
+</section>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Priority queue</p>
+    <h2>Do next</h2>
+    {% if briefing.priority_actions %}
+      <div class="action-stack">
+        {% for action in briefing.priority_actions %}
+          <div class="action-row priority-{{ action.priority }}">
+            <div>
+              <span class="pill {% if action.priority == 'high' %}warning{% elif action.priority == 'medium' %}highlight{% endif %}">{{ action.priority }}</span>
+              <span class="pill">{{ action.category }}</span>
+              <h3>{{ action.title }}</h3>
+              <p class="muted">{{ action.detail }}</p>
+            </div>
+            {% if action.href %}<a class="button small secondary" href="{{ action.href }}">Open</a>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">No urgent actions yet. Keep building pipeline and running evidence-backed reviews.</p>
+    {% endif %}
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Call prep</p>
+    <h2>Talking points</h2>
+    <ul class="check-list action-list">
+      {% for point in briefing.talking_points %}
+        <li>{{ point }}</li>
+      {% endfor %}
+    </ul>
+    <div class="hero-actions compact">
+      <a class="button small secondary" href="/pricing">Pilot package</a>
+      <a class="button small secondary" href="/demo">Public demo</a>
+      <a class="button small secondary" href="/dashboard/proposals">Proposals</a>
+    </div>
+  </article>
+</section>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Commercial signals</p>
+    <h2>Follow-up and payment</h2>
+    <div class="metric-grid mini-metrics">
+      <div class="metric"><strong>{{ briefing.metrics.follow_up_due_count }}</strong><span>proposal follow-ups due</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.payment_due_count }}</strong><span>payment actions due</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.accepted_proposal_count }}</strong><span>accepted proposals</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.paid_proposal_count }}</strong><span>paid proposals</span></div>
+    </div>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Customer success</p>
+    <h2>Renewal and usage</h2>
+    <div class="metric-grid mini-metrics">
+      <div class="metric"><strong>{{ briefing.metrics.at_risk_customer_count }}</strong><span>at-risk customers</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.renewal_due_customer_count }}</strong><span>renewal due</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.check_ins_due_count }}</strong><span>check-ins due</span></div>
+      <div class="metric"><strong>{{ briefing.metrics.usage_percent }}%</strong><span>review allowance used</span></div>
+    </div>
+  </article>
+</section>
+
+<section class="card compact-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Recent operating log</p>
+      <h2>Latest activity</h2>
+    </div>
+    <div class="section-actions"><a href="/dashboard/activity">Full activity timeline →</a></div>
+  </div>
+  {% if briefing.recent_activity %}
+    <div class="table-wrap flush">
+      <table>
+        <thead><tr><th>When</th><th>Category</th><th>Activity</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for item in briefing.recent_activity %}
+            <tr>
+              <td>{{ item.occurred_at }}</td>
+              <td>{{ item.category }}</td>
+              <td>{% if item.href %}<a href="{{ item.href }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}<br><span class="muted">{{ item.detail }}</span></td>
+              <td>{{ item.status or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No recent activity yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

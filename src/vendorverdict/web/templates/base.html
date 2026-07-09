@@ -6,7 +6,7 @@
   <title>{% block title %}VendorVerdict{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/favicon.png">
-  <link rel="stylesheet" href="/static/style.css?v=20260709-activity-timeline">
+  <link rel="stylesheet" href="/static/style.css?v=20260709-operator-briefing">
 </head>
 <body>
   <header class="topbar">
@@ -25,6 +25,7 @@
       {% if auth and auth.is_authenticated %}
         <a href="/dashboard">Reports</a>
         <a href="/dashboard/metrics">Metrics</a>
+        <a href="/dashboard/briefing">Briefing</a>
         <a href="/dashboard/activity">Activity</a>
         <a href="/reviews/new">New review</a>
         <a href="/dashboard/leads">Leads</a>

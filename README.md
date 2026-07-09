@@ -878,3 +878,8 @@ Protected operator timeline routes:
 - `/dashboard/activity` — recent activity across reports, leads, pilots, proposals, payments, share links, and customers.
 - `/dashboard/activity.md` — Markdown export.
 - `/dashboard/activity.csv` — CSV export.
+
+
+## Operator briefing
+
+The protected `/dashboard/briefing` route combines metrics and recent activity into a daily founder/operator briefing with priority actions, commercial follow-ups, payment actions, customer-success actions, call talking points, and a Markdown export at `/dashboard/briefing.md`. See `docs/OPERATOR_BRIEFING.md`.

@@ -26,6 +26,7 @@ from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_HEALTH_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
 from vendorverdict.business_metrics import build_business_metrics_snapshot, render_business_metrics_markdown
 from vendorverdict.activity import ActivityStore
+from vendorverdict.operator_briefing import build_operator_briefing, render_operator_briefing_markdown
 from vendorverdict.customer_success import (
     build_customer_success_emails,
     build_customer_success_snapshot,
@@ -615,6 +616,64 @@ def create_app(
             csv_text,
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="vendorverdict-activity-timeline.csv"'},
+        )
+
+    @app.get("/dashboard/briefing", response_class=HTMLResponse)
+    def dashboard_operator_briefing(request: Request) -> HTMLResponse:
+        customers = customer_store()
+        metrics_snapshot = build_business_metrics_snapshot(
+            reports=store().list_reports(limit=1000),
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+            share_count=len(share_store().list_shares(limit=1000)),
+            check_ins_due_count=customers.check_in_due_count(),
+        )
+        activity_snapshot = activity_store().build_snapshot(limit=25)
+        briefing = build_operator_briefing(
+            metrics=metrics_snapshot,
+            activity_items=activity_snapshot.items,
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+        )
+        return TEMPLATES.TemplateResponse(
+            request,
+            "briefing.html",
+            {
+                "request": request,
+                "briefing": briefing,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/briefing.md")
+    def export_dashboard_operator_briefing_markdown() -> PlainTextResponse:
+        customers = customer_store()
+        metrics_snapshot = build_business_metrics_snapshot(
+            reports=store().list_reports(limit=1000),
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+            share_count=len(share_store().list_shares(limit=1000)),
+            check_ins_due_count=customers.check_in_due_count(),
+        )
+        activity_snapshot = activity_store().build_snapshot(limit=25)
+        briefing = build_operator_briefing(
+            metrics=metrics_snapshot,
+            activity_items=activity_snapshot.items,
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+        )
+        return PlainTextResponse(
+            render_operator_briefing_markdown(briefing),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-operator-briefing.md"'},
         )
 
     @app.get("/dashboard/readiness", response_class=HTMLResponse)

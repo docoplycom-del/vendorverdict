@@ -565,3 +565,8 @@ Use `/dashboard/metrics.md` for a Markdown export.
 ## Activity timeline
 
 The protected `/dashboard/activity` route provides a read-only operator timeline. It is backed by the existing SQLite database and is included automatically in normal backups.
+
+
+## Operator briefing
+
+The protected `/dashboard/briefing` route combines metrics and recent activity into a daily founder/operator briefing with priority actions, commercial follow-ups, payment actions, customer-success actions, call talking points, and a Markdown export at `/dashboard/briefing.md`. See `docs/OPERATOR_BRIEFING.md`.
