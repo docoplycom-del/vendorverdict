@@ -932,3 +932,36 @@ html body button.button:not(.secondary) {
 .compact-card .notice {
   margin: 1rem 0;
 }
+
+/* Customer success and renewal workflow */
+.customer-success-card .signal-list {
+  display: grid;
+  gap: .75rem;
+}
+
+.status-pill {
+  background: rgba(255, 255, 255, .10);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  color: var(--text);
+  display: inline-block;
+  font-size: .86rem;
+  line-height: 1.35;
+  padding: .35rem .65rem;
+}
+
+.status-pill.success {
+  background: rgba(55, 255, 178, .12);
+  border-color: rgba(55, 255, 178, .35);
+}
+
+.status-pill.danger {
+  background: rgba(255, 111, 145, .14);
+  border-color: rgba(255, 111, 145, .35);
+}
+
+.compact-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}

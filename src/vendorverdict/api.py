@@ -23,7 +23,13 @@ from vendorverdict.auth import (
     set_session_cookie,
 )
 from vendorverdict.cli import DEMO_QUERY
-from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
+from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_HEALTH_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
+from vendorverdict.customer_success import (
+    build_customer_success_emails,
+    build_customer_success_snapshot,
+    default_next_check_in_date,
+    render_customer_success_markdown,
+)
 from vendorverdict.lead_followups import build_lead_followup_templates
 from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
@@ -967,6 +973,8 @@ def create_app(
                 "customers": customers.list_customers(limit=100),
                 "status_counts": customers.status_counts(),
                 "billing_counts": customers.billing_counts(),
+                "health_counts": customers.health_counts(),
+                "check_in_due_count": customers.check_in_due_count(),
                 "customer_statuses": CUSTOMER_STATUSES,
                 "auth": _auth_context(request),
             },
@@ -990,6 +998,9 @@ def create_app(
         proposal = proposal_store().get_proposal(customer.proposal_id) if customer.proposal_id else None
         pilot = pilot_store().get_pilot(customer.pilot_id) if customer.pilot_id else None
         runtime_settings = settings_store().get_settings()
+        reviews = customers.list_reviews(customer_id)
+        success_snapshot = build_customer_success_snapshot(customer, reviews)
+        success_emails = build_customer_success_emails(customer, success_snapshot)
         return TEMPLATES.TemplateResponse(
             request,
             "customer_detail.html",
@@ -998,14 +1009,18 @@ def create_app(
                 "customer": customer,
                 "proposal": proposal,
                 "pilot": pilot,
-                "reviews": customers.list_reviews(customer_id),
+                "reviews": reviews,
                 "review_count": customers.review_count(customer_id),
                 "reviews_remaining": customers.remaining_reviews(customer_id),
+                "success_snapshot": success_snapshot,
+                "success_emails": success_emails,
+                "default_next_check_in_due": default_next_check_in_date(),
                 "review_values": _dashboard_default_values(runtime_settings),
                 "review_errors": [],
                 "draft_response": "",
                 "customer_statuses": CUSTOMER_STATUSES,
                 "billing_statuses": BILLING_STATUSES,
+                "customer_health_statuses": CUSTOMER_HEALTH_STATUSES,
                 "customer_packages": CUSTOMER_PACKAGES,
                 "auth": _auth_context(request),
             },
@@ -1023,11 +1038,41 @@ def create_app(
             renewal_date=form.get("renewal_date", ""),
             onboarding_notes=form.get("onboarding_notes", ""),
             internal_notes=form.get("internal_notes", ""),
+            health_status=form.get("health_status", ""),
+            next_check_in_due=form.get("next_check_in_due", ""),
         )
         if not updated:
             raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
         return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
 
+
+
+    @app.post("/dashboard/customers/{customer_id}/check-in-sent")
+    async def mark_dashboard_customer_check_in_sent(request: Request, customer_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        updated = customer_store().mark_check_in_sent(
+            customer_id,
+            next_check_in_due=form.get("next_check_in_due", ""),
+            health_status=form.get("health_status", ""),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
+
+    @app.get("/dashboard/customers/{customer_id}/success.md")
+    def export_dashboard_customer_success_markdown(customer_id: str) -> PlainTextResponse:
+        customers = customer_store()
+        customer = customers.get_customer(customer_id)
+        if customer is None:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        reviews = customers.list_reviews(customer_id)
+        snapshot = build_customer_success_snapshot(customer, reviews)
+        markdown = render_customer_success_markdown(customer, snapshot, reviews)
+        return PlainTextResponse(
+            markdown,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-customer-success.md"'},
+        )
 
     @app.get("/dashboard/customers/{customer_id}/reviews.csv")
     def export_dashboard_customer_reviews_csv(customer_id: str) -> PlainTextResponse:
@@ -1064,6 +1109,8 @@ def create_app(
             proposal = proposal_store().get_proposal(customer.proposal_id) if customer.proposal_id else None
             pilot = pilot_store().get_pilot(customer.pilot_id) if customer.pilot_id else None
             refreshed = customers.get_customer(customer_id) or customer
+            review_list = customers.list_reviews(customer_id)
+            success_snapshot = build_customer_success_snapshot(refreshed, review_list)
             return TEMPLATES.TemplateResponse(
                 request,
                 "customer_detail.html",
@@ -1072,14 +1119,18 @@ def create_app(
                     "customer": refreshed,
                     "proposal": proposal,
                     "pilot": pilot,
-                    "reviews": customers.list_reviews(customer_id),
+                    "reviews": review_list,
                     "review_count": customers.review_count(customer_id),
                     "reviews_remaining": customers.remaining_reviews(customer_id),
+                    "success_snapshot": success_snapshot,
+                    "success_emails": build_customer_success_emails(refreshed, success_snapshot),
+                    "default_next_check_in_due": default_next_check_in_date(),
                     "review_values": {**values, "label": review_label},
                     "review_errors": errors,
                     "draft_response": draft_response,
                     "customer_statuses": CUSTOMER_STATUSES,
                     "billing_statuses": BILLING_STATUSES,
+                    "customer_health_statuses": CUSTOMER_HEALTH_STATUSES,
                     "customer_packages": CUSTOMER_PACKAGES,
                     "auth": _auth_context(request),
                 },

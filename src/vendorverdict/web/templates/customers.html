@@ -19,6 +19,9 @@
       <div class="metric"><strong>{{ status_counts.get(status, 0) }}</strong><span>{{ status.replace('_', ' ') }}</span></div>
     {% endfor %}
     <div class="metric"><strong>{{ billing_counts.get('current', 0) }}</strong><span>billing current</span></div>
+    <div class="metric"><strong>{{ health_counts.get('at_risk', 0) }}</strong><span>at risk</span></div>
+    <div class="metric"><strong>{{ health_counts.get('renewal_due', 0) }}</strong><span>renewal due</span></div>
+    <div class="metric"><strong>{{ check_in_due_count }}</strong><span>check-ins due</span></div>
   </div>
 </section>
 
@@ -36,7 +39,7 @@
 {% if customers %}
   <div class="table-wrap card compact-card">
     <table>
-      <thead><tr><th>Company</th><th>Contact</th><th>Package</th><th>Status</th><th>Billing</th><th>Usage</th><th>Renewal</th><th></th></tr></thead>
+      <thead><tr><th>Company</th><th>Contact</th><th>Package</th><th>Status</th><th>Billing</th><th>Health</th><th>Usage</th><th>Renewal</th><th>Check-in</th><th></th></tr></thead>
       <tbody>
         {% for customer in customers %}
           <tr>
@@ -45,8 +48,10 @@
             <td>{{ customer.package_label }}</td>
             <td><span class="status-pill">{{ customer.status.replace('_', ' ') }}</span></td>
             <td>{{ customer.billing_label }}</td>
+            <td><span class="status-pill">{{ customer.health_label }}</span></td>
             <td>{{ customer.review_count }}/{{ customer.review_allowance }} reviews<br><span class="muted">{{ customer.reviews_remaining }} remaining</span></td>
             <td>{{ customer.renewal_date or '—' }}</td>
+            <td>{{ customer.next_check_in_due or '—' }}{% if customer.last_check_in_at %}<br><span class="muted">last {{ customer.last_check_in_at[:10] }}</span>{% endif %}</td>
             <td><a class="button small" href="/dashboard/customers/{{ customer.customer_id }}">Open</a></td>
           </tr>
         {% endfor %}

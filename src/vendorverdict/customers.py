@@ -19,6 +19,7 @@ from vendorverdict.storage import default_db_path
 CUSTOMER_STATUSES = ("onboarding", "active", "paused", "churned")
 CUSTOMER_PACKAGES = ("starter", "team", "advisor", "custom")
 BILLING_STATUSES = ("trial", "current", "payment_due", "overdue", "waived")
+CUSTOMER_HEALTH_STATUSES = ("healthy", "watch", "expansion", "renewal_due", "at_risk")
 
 
 PACKAGE_REVIEW_ALLOWANCE = {
@@ -39,6 +40,11 @@ def normalize_billing_status(value: str) -> str:
     return normalized if normalized in BILLING_STATUSES else "trial"
 
 
+def normalize_customer_health(value: str) -> str:
+    normalized = (value or "").strip().lower().replace(" ", "_").replace("-", "_")
+    return normalized if normalized in CUSTOMER_HEALTH_STATUSES else ""
+
+
 @dataclass(frozen=True)
 class CustomerRecord:
     customer_id: str
@@ -56,6 +62,9 @@ class CustomerRecord:
     renewal_date: str = ""
     onboarding_notes: str = ""
     internal_notes: str = ""
+    health_status: str = ""
+    last_check_in_at: str = ""
+    next_check_in_due: str = ""
     review_count: int = 0
 
     def __getitem__(self, key: str) -> Any:
@@ -77,6 +86,10 @@ class CustomerRecord:
             "renewal_date": self.renewal_date,
             "onboarding_notes": self.onboarding_notes,
             "internal_notes": self.internal_notes,
+            "health_status": self.health_status,
+            "health_label": self.health_label,
+            "last_check_in_at": self.last_check_in_at,
+            "next_check_in_due": self.next_check_in_due,
             "review_count": self.review_count,
             "reviews_used": self.review_count,
             "reviews_remaining": self.reviews_remaining,
@@ -99,6 +112,10 @@ class CustomerRecord:
             "advisor": "Advisor / agency rollout",
             "custom": "Custom rollout",
         }.get(self.package, "Custom rollout")
+
+    @property
+    def health_label(self) -> str:
+        return (self.health_status or "auto").replace("_", " ")
 
     @property
     def billing_label(self) -> str:
@@ -202,8 +219,9 @@ class CustomerStore:
                 """
                 INSERT INTO customer_accounts (
                     id, created_at, updated_at, proposal_id, pilot_id, company, contact_name, contact_email,
-                    package, status, billing_status, review_allowance, renewal_date, onboarding_notes, internal_notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    package, status, billing_status, review_allowance, renewal_date, onboarding_notes, internal_notes,
+                    health_status, last_check_in_at, next_check_in_due
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     customer_id,
@@ -221,6 +239,9 @@ class CustomerStore:
                     renewal,
                     notes,
                     "",
+                    "",
+                    "",
+                    (datetime.now(UTC).date() + timedelta(days=14)).isoformat(),
                 ),
             )
             conn.commit()
@@ -292,6 +313,8 @@ class CustomerStore:
         renewal_date: str,
         onboarding_notes: str,
         internal_notes: str,
+        health_status: str = "",
+        next_check_in_due: str = "",
     ) -> bool:
         now = datetime.now(UTC).isoformat()
         safe_package = normalize_proposal_package(package)
@@ -300,7 +323,7 @@ class CustomerStore:
                 """
                 UPDATE customer_accounts
                 SET updated_at = ?, status = ?, billing_status = ?, package = ?, review_allowance = ?,
-                    renewal_date = ?, onboarding_notes = ?, internal_notes = ?
+                    renewal_date = ?, onboarding_notes = ?, internal_notes = ?, health_status = ?, next_check_in_due = ?
                 WHERE id = ?
                 """,
                 (
@@ -312,6 +335,8 @@ class CustomerStore:
                     _date_value(renewal_date),
                     onboarding_notes.strip(),
                     internal_notes.strip(),
+                    normalize_customer_health(health_status),
+                    _date_value(next_check_in_due),
                     customer_id,
                 ),
             )
@@ -391,6 +416,50 @@ class CustomerStore:
             return 0
         return max(0, customer.review_allowance - self.review_count(customer_id))
 
+
+    def mark_check_in_sent(
+        self,
+        customer_id: str,
+        *,
+        next_check_in_due: str = "",
+        health_status: str = "",
+    ) -> bool:
+        now = datetime.now(UTC).isoformat()
+        due = _date_value(next_check_in_due) or (datetime.now(UTC).date() + timedelta(days=14)).isoformat()
+        with closing(self._connect()) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE customer_accounts
+                SET updated_at = ?, last_check_in_at = ?, next_check_in_due = ?, health_status = COALESCE(NULLIF(?, ''), health_status)
+                WHERE id = ?
+                """,
+                (now, now, due, normalize_customer_health(health_status), customer_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def health_counts(self) -> dict[str, int]:
+        counts = {status: 0 for status in CUSTOMER_HEALTH_STATUSES}
+        with closing(self._connect()) as conn:
+            rows = conn.execute("SELECT health_status, COUNT(*) AS count FROM customer_accounts GROUP BY health_status").fetchall()
+        for row in rows:
+            health = normalize_customer_health(row["health_status"]) or "watch"
+            counts[health] = counts.get(health, 0) + int(row["count"] or 0)
+        return counts
+
+    def check_in_due_count(self) -> int:
+        today = datetime.now(UTC).date().isoformat()
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM customer_accounts
+                WHERE next_check_in_due != '' AND next_check_in_due <= ? AND status != 'churned'
+                """,
+                (today,),
+            ).fetchone()
+        return int(row["count"] or 0) if row is not None else 0
+
     def export_reviews_csv(self, customer_id: str) -> str:
         reviews = self.list_reviews(customer_id)
         output = io.StringIO()
@@ -435,7 +504,8 @@ class CustomerStore:
         writer.writerow([
             "created_at", "updated_at", "company", "contact_name", "contact_email", "proposal_id",
             "pilot_id", "package", "status", "billing_status", "review_allowance", "reviews_used",
-            "reviews_remaining", "usage_percent", "renewal_date", "onboarding_notes", "internal_notes",
+            "reviews_remaining", "usage_percent", "renewal_date", "health_status", "last_check_in_at",
+            "next_check_in_due", "onboarding_notes", "internal_notes",
         ])
         for customer in self.list_customers(limit=limit):
             writer.writerow([
@@ -454,6 +524,9 @@ class CustomerStore:
                 customer.reviews_remaining,
                 customer.usage_percent,
                 customer.renewal_date,
+                customer.health_status,
+                customer.last_check_in_at,
+                customer.next_check_in_due,
                 customer.onboarding_notes,
                 customer.internal_notes,
             ])
@@ -478,7 +551,10 @@ class CustomerStore:
                     review_allowance INTEGER NOT NULL DEFAULT 0,
                     renewal_date TEXT NOT NULL DEFAULT '',
                     onboarding_notes TEXT NOT NULL DEFAULT '',
-                    internal_notes TEXT NOT NULL DEFAULT ''
+                    internal_notes TEXT NOT NULL DEFAULT '',
+                    health_status TEXT NOT NULL DEFAULT '',
+                    last_check_in_at TEXT NOT NULL DEFAULT '',
+                    next_check_in_due TEXT NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS customer_reviews (
                     customer_id TEXT NOT NULL,
@@ -504,6 +580,9 @@ class CustomerStore:
                 "renewal_date": "ALTER TABLE customer_accounts ADD COLUMN renewal_date TEXT NOT NULL DEFAULT ''",
                 "onboarding_notes": "ALTER TABLE customer_accounts ADD COLUMN onboarding_notes TEXT NOT NULL DEFAULT ''",
                 "internal_notes": "ALTER TABLE customer_accounts ADD COLUMN internal_notes TEXT NOT NULL DEFAULT ''",
+                "health_status": "ALTER TABLE customer_accounts ADD COLUMN health_status TEXT NOT NULL DEFAULT ''",
+                "last_check_in_at": "ALTER TABLE customer_accounts ADD COLUMN last_check_in_at TEXT NOT NULL DEFAULT ''",
+                "next_check_in_due": "ALTER TABLE customer_accounts ADD COLUMN next_check_in_due TEXT NOT NULL DEFAULT ''",
             }
             for column, statement in migrations.items():
                 if column not in existing_columns:
@@ -533,6 +612,9 @@ class CustomerStore:
             renewal_date=row["renewal_date"] or "",
             onboarding_notes=row["onboarding_notes"] or "",
             internal_notes=row["internal_notes"] or "",
+            health_status=normalize_customer_health(row["health_status"] if "health_status" in row.keys() else ""),
+            last_check_in_at=(row["last_check_in_at"] if "last_check_in_at" in row.keys() else "") or "",
+            next_check_in_due=(row["next_check_in_due"] if "next_check_in_due" in row.keys() else "") or "",
             review_count=int(row["review_count"] or 0) if "review_count" in row.keys() else 0,
         )
 

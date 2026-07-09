@@ -550,3 +550,8 @@ VENDORVERDICT_STRIPE_WEBHOOK_TOLERANCE_SECONDS=300
 ## Customer activation workflow
 
 The customer activation workflow is database-backed and requires no extra service. The existing SQLite backup includes the `customer_accounts` table. After deployment, open `/dashboard/customers` to confirm the route is available.
+
+
+## Customer success and renewal workflow
+
+The dashboard includes `/dashboard/customers` and per-customer workspaces with health status, check-in tracking, renewal email templates, and downloadable customer-success summaries. These records are stored in the same SQLite database and included in the existing backup process.

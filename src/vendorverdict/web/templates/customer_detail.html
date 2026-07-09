@@ -22,6 +22,8 @@
     <div class="metric"><strong>{{ review_count }}</strong><span>reviews used</span></div>
     <div class="metric"><strong>{{ reviews_remaining }}</strong><span>reviews remaining</span></div>
     <div class="metric"><strong>{{ customer.renewal_date or '—' }}</strong><span>renewal date</span></div>
+    <div class="metric"><strong>{{ success_snapshot.health_label }}</strong><span>customer health</span></div>
+    <div class="metric"><strong>{{ customer.next_check_in_due or '—' }}</strong><span>next check-in</span></div>
   </div>
 </section>
 
@@ -44,6 +46,60 @@
     <p>{{ customer.onboarding_notes or 'Confirm onboarding call, first recurring review batch, and reporting cadence.' }}</p>
     {% if customer.internal_notes %}<p class="muted">Internal: {{ customer.internal_notes }}</p>{% endif %}
   </article>
+</section>
+
+
+<section class="card customer-success-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Customer success</p>
+      <h2>Renewal and account health</h2>
+      <p class="muted">Track whether this customer is healthy, needs follow-up, or is ready for expansion.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/customers/{{ customer.customer_id }}/success.md">Download summary</a>
+      <a class="button secondary" href="{{ success_emails.check_in.mailto_url }}">Open check-in email</a>
+      <a class="button secondary" href="{{ success_emails.renewal.mailto_url }}">Open renewal email</a>
+    </div>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ success_snapshot.health_label }}</strong><span>health status</span></div>
+    <div class="metric"><strong>{{ success_snapshot.usage_percent }}%</strong><span>usage</span></div>
+    <div class="metric"><strong>{{ success_snapshot.renewal_days_remaining if success_snapshot.renewal_days_remaining is not none else '—' }}</strong><span>days to renewal</span></div>
+    <div class="metric"><strong>{{ customer.last_check_in_at[:10] if customer.last_check_in_at else '—' }}</strong><span>last check-in</span></div>
+  </div>
+  <div class="grid-two">
+    <div>
+      <h3>Next best action</h3>
+      <p>{{ success_snapshot.next_best_action }}</p>
+      <form class="compact-form" method="post" action="/dashboard/customers/{{ customer.customer_id }}/check-in-sent">
+        <div class="form-grid">
+          <label>Health after check-in
+            <select name="health_status">
+              {% for status in customer_health_statuses %}<option value="{{ status }}" {% if status == success_snapshot.health_status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Next check-in due
+            <input type="date" name="next_check_in_due" value="{{ customer.next_check_in_due or default_next_check_in_due }}">
+          </label>
+        </div>
+        <button class="button" type="submit">Mark check-in sent</button>
+      </form>
+    </div>
+    <div>
+      <h3>Signals</h3>
+      <div class="signal-list">
+        {% if success_snapshot.risks %}
+          {% for risk in success_snapshot.risks %}<p class="status-pill danger">{{ risk }}</p>{% endfor %}
+        {% else %}
+          <p class="status-pill success">No immediate risk flags recorded.</p>
+        {% endif %}
+        {% if success_snapshot.opportunities %}
+          {% for opportunity in success_snapshot.opportunities %}<p class="status-pill">{{ opportunity }}</p>{% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="card">
@@ -159,6 +215,15 @@
       </label>
       <label>Renewal date
         <input name="renewal_date" type="date" value="{{ customer.renewal_date }}">
+      </label>
+      <label>Customer health
+        <select name="health_status">
+          <option value="" {% if not customer.health_status %}selected{% endif %}>auto</option>
+          {% for status in customer_health_statuses %}<option value="{{ status }}" {% if status == customer.health_status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Next check-in due
+        <input name="next_check_in_due" type="date" value="{{ customer.next_check_in_due }}">
       </label>
     </div>
     <label>Onboarding notes
