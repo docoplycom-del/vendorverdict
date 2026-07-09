@@ -10,6 +10,7 @@
     </div>
     <div class="hero-actions compact">
       <a class="button secondary" href="/dashboard/briefing.md">Export Markdown</a>
+      <a class="button secondary" href="{{ briefing_email.mailto_url }}">Open email</a>
       <a class="button secondary" href="/dashboard/metrics">Metrics</a>
       <a class="button secondary" href="/dashboard/activity">Activity</a>
     </div>
@@ -27,6 +28,55 @@
     <div class="metric"><strong>{{ briefing.metrics.customer_count }}</strong><span>customers</span></div>
     <div class="metric"><strong>{{ briefing.urgent_count }}</strong><span>urgent actions</span></div>
   </div>
+</section>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Briefing delivery</p>
+    <h2>Email this briefing</h2>
+    {% if briefing_email_notice == 'sent' %}
+      <div class="callout success"><strong>Briefing email sent.</strong></div>
+    {% elif briefing_email_notice == 'error' %}
+      <div class="callout warning"><strong>Briefing email was not sent.</strong> Check SMTP/recipient settings or use the mailto fallback.</div>
+    {% endif %}
+    <p class="muted">Recipient: <strong>{{ briefing_email_summary.recipient or 'not configured' }}</strong></p>
+    {% if briefing_email_summary.missing_fields %}
+      <p class="muted">Missing for automatic send: {{ briefing_email_summary.missing_fields|join(', ') }}</p>
+    {% else %}
+      <p class="muted">Automatic SMTP sending is configured.</p>
+    {% endif %}
+    <div class="hero-actions compact">
+      <a class="button small secondary" href="{{ briefing_email.mailto_url }}">Open briefing email</a>
+      <form method="post" action="/dashboard/briefing/send" class="inline-form">
+        <button class="button small" type="submit">Send briefing now</button>
+      </form>
+      <a class="button small secondary" href="/dashboard/settings">Settings</a>
+    </div>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Delivery log</p>
+    <h2>Recent sends</h2>
+    {% if briefing_deliveries %}
+      <div class="table-wrap flush compact-table">
+        <table>
+          <thead><tr><th>When</th><th>Status</th><th>Recipient</th><th>Detail</th></tr></thead>
+          <tbody>
+            {% for delivery in briefing_deliveries %}
+              <tr>
+                <td>{{ delivery.created_at }}</td>
+                <td>{{ delivery.status }}</td>
+                <td>{{ delivery.recipient or '—' }}</td>
+                <td>{{ delivery.detail }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No operator briefing emails recorded yet.</p>
+    {% endif %}
+  </article>
 </section>
 
 <section class="grid two-col gap-lg">

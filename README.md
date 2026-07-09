@@ -883,3 +883,7 @@ Protected operator timeline routes:
 ## Operator briefing
 
 The protected `/dashboard/briefing` route combines metrics and recent activity into a daily founder/operator briefing with priority actions, commercial follow-ups, payment actions, customer-success actions, call talking points, and a Markdown export at `/dashboard/briefing.md`. See `docs/OPERATOR_BRIEFING.md`.
+
+## Operator workflow
+
+- Operator briefing email workflow with mailto fallback, optional SMTP sending, and delivery log.

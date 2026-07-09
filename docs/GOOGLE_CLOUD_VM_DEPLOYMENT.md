@@ -570,3 +570,8 @@ The protected `/dashboard/activity` route provides a read-only operator timeline
 ## Operator briefing
 
 The protected `/dashboard/briefing` route combines metrics and recent activity into a daily founder/operator briefing with priority actions, commercial follow-ups, payment actions, customer-success actions, call talking points, and a Markdown export at `/dashboard/briefing.md`. See `docs/OPERATOR_BRIEFING.md`.
+
+
+## Optional operator briefing email
+
+Set `VENDORVERDICT_BRIEFING_EMAIL_ENABLED=1` and `VENDORVERDICT_BRIEFING_EMAIL_TO` in `/etc/vendorverdict/vendorverdict.env` to enable SMTP delivery from `/dashboard/briefing`. It reuses the existing `VENDORVERDICT_SMTP_*` settings.

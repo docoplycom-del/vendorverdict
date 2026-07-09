@@ -27,6 +27,12 @@ from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_HEALTH_STATUSES, 
 from vendorverdict.business_metrics import build_business_metrics_snapshot, render_business_metrics_markdown
 from vendorverdict.activity import ActivityStore
 from vendorverdict.operator_briefing import build_operator_briefing, render_operator_briefing_markdown
+from vendorverdict.operator_briefing_delivery import (
+    BriefingDeliveryStore,
+    briefing_email_summary,
+    build_operator_briefing_email,
+    send_operator_briefing_email,
+)
 from vendorverdict.customer_success import (
     build_customer_success_emails,
     build_customer_success_snapshot,
@@ -259,12 +265,37 @@ def create_app(
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return ActivityStore(env_db or app.state.default_db_path)
 
+    def briefing_delivery_store() -> BriefingDeliveryStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return BriefingDeliveryStore(env_db or app.state.default_db_path)
+
     def resolved_export_dir() -> Path:
         return Path(
             os.getenv("VENDORVERDICT_API_EXPORT_DIR")
             or os.getenv("VENDORVERDICT_REPORT_EXPORT_DIR")
             or app.state.default_export_dir
             or "reports"
+        )
+
+    def current_operator_briefing():
+        customers = customer_store()
+        metrics_snapshot = build_business_metrics_snapshot(
+            reports=store().list_reports(limit=1000),
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+            share_count=len(share_store().list_shares(limit=1000)),
+            check_ins_due_count=customers.check_in_due_count(),
+        )
+        activity_snapshot = activity_store().build_snapshot(limit=25)
+        return build_operator_briefing(
+            metrics=metrics_snapshot,
+            activity_items=activity_snapshot.items,
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
         )
 
     @app.get("/", response_class=HTMLResponse)
@@ -619,25 +650,15 @@ def create_app(
         )
 
     @app.get("/dashboard/briefing", response_class=HTMLResponse)
-    def dashboard_operator_briefing(request: Request) -> HTMLResponse:
-        customers = customer_store()
-        metrics_snapshot = build_business_metrics_snapshot(
-            reports=store().list_reports(limit=1000),
-            leads=lead_store().list_leads(limit=2000),
-            pilots=pilot_store().list_pilots(limit=1000),
-            proposals=proposal_store().list_proposals(limit=500),
-            customers=customers.list_customers(limit=2000),
-            share_count=len(share_store().list_shares(limit=1000)),
-            check_ins_due_count=customers.check_in_due_count(),
-        )
-        activity_snapshot = activity_store().build_snapshot(limit=25)
-        briefing = build_operator_briefing(
-            metrics=metrics_snapshot,
-            activity_items=activity_snapshot.items,
-            leads=lead_store().list_leads(limit=2000),
-            pilots=pilot_store().list_pilots(limit=1000),
-            proposals=proposal_store().list_proposals(limit=500),
-            customers=customers.list_customers(limit=2000),
+    def dashboard_operator_briefing(request: Request, email: str = "") -> HTMLResponse:
+        briefing = current_operator_briefing()
+        runtime_settings = settings_store().get_settings()
+        email_settings = get_proposal_email_settings()
+        summary = briefing_email_summary(operator_email=runtime_settings.operator_email, smtp_settings=email_settings)
+        preview = build_operator_briefing_email(
+            briefing,
+            recipient=summary.recipient or runtime_settings.operator_email or "operator@example.com",
+            public_url=_public_base_url(request, runtime_settings.public_url),
         )
         return TEMPLATES.TemplateResponse(
             request,
@@ -645,31 +666,39 @@ def create_app(
             {
                 "request": request,
                 "briefing": briefing,
+                "briefing_email": preview,
+                "briefing_email_summary": summary,
+                "briefing_email_notice": email,
+                "briefing_deliveries": briefing_delivery_store().list_deliveries(limit=5),
                 "auth": _auth_context(request),
             },
         )
 
+    @app.post("/dashboard/briefing/send")
+    async def send_dashboard_operator_briefing(request: Request) -> RedirectResponse:
+        briefing = current_operator_briefing()
+        runtime_settings = settings_store().get_settings()
+        email_settings = get_proposal_email_settings()
+        recipient = os.getenv("VENDORVERDICT_BRIEFING_EMAIL_TO", "").strip() or runtime_settings.operator_email.strip()
+        result = send_operator_briefing_email(
+            briefing,
+            recipient=recipient,
+            public_url=_public_base_url(request, runtime_settings.public_url),
+            settings=email_settings,
+        )
+        briefing_delivery_store().record_delivery(
+            status="sent" if result.sent else "error",
+            recipient=recipient,
+            subject=build_operator_briefing_email(briefing, recipient=recipient or "operator@example.com").subject,
+            detail=result.detail,
+            action_count=len(briefing.priority_actions),
+            urgent_count=briefing.urgent_count,
+        )
+        return RedirectResponse(url=f"/dashboard/briefing?email={'sent' if result.sent else 'error'}", status_code=303)
+
     @app.get("/dashboard/briefing.md")
     def export_dashboard_operator_briefing_markdown() -> PlainTextResponse:
-        customers = customer_store()
-        metrics_snapshot = build_business_metrics_snapshot(
-            reports=store().list_reports(limit=1000),
-            leads=lead_store().list_leads(limit=2000),
-            pilots=pilot_store().list_pilots(limit=1000),
-            proposals=proposal_store().list_proposals(limit=500),
-            customers=customers.list_customers(limit=2000),
-            share_count=len(share_store().list_shares(limit=1000)),
-            check_ins_due_count=customers.check_in_due_count(),
-        )
-        activity_snapshot = activity_store().build_snapshot(limit=25)
-        briefing = build_operator_briefing(
-            metrics=metrics_snapshot,
-            activity_items=activity_snapshot.items,
-            leads=lead_store().list_leads(limit=2000),
-            pilots=pilot_store().list_pilots(limit=1000),
-            proposals=proposal_store().list_proposals(limit=500),
-            customers=customers.list_customers(limit=2000),
-        )
+        briefing = current_operator_briefing()
         return PlainTextResponse(
             render_operator_briefing_markdown(briefing),
             media_type="text/markdown; charset=utf-8",
