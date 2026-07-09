@@ -24,6 +24,7 @@ from vendorverdict.auth import (
 )
 from vendorverdict.cli import DEMO_QUERY
 from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_HEALTH_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
+from vendorverdict.business_metrics import build_business_metrics_snapshot, render_business_metrics_markdown
 from vendorverdict.customer_success import (
     build_customer_success_emails,
     build_customer_success_snapshot,
@@ -537,6 +538,46 @@ def create_app(
                 "version": __version__,
                 "auth": _auth_context(request),
             },
+        )
+
+    @app.get("/dashboard/metrics", response_class=HTMLResponse)
+    def dashboard_business_metrics(request: Request) -> HTMLResponse:
+        customers = customer_store()
+        snapshot = build_business_metrics_snapshot(
+            reports=store().list_reports(limit=1000),
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+            share_count=len(share_store().list_shares(limit=1000)),
+            check_ins_due_count=customers.check_in_due_count(),
+        )
+        return TEMPLATES.TemplateResponse(
+            request,
+            "metrics.html",
+            {
+                "request": request,
+                "snapshot": snapshot,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/metrics.md")
+    def export_dashboard_business_metrics_markdown() -> PlainTextResponse:
+        customers = customer_store()
+        snapshot = build_business_metrics_snapshot(
+            reports=store().list_reports(limit=1000),
+            leads=lead_store().list_leads(limit=2000),
+            pilots=pilot_store().list_pilots(limit=1000),
+            proposals=proposal_store().list_proposals(limit=500),
+            customers=customers.list_customers(limit=2000),
+            share_count=len(share_store().list_shares(limit=1000)),
+            check_ins_due_count=customers.check_in_due_count(),
+        )
+        return PlainTextResponse(
+            render_business_metrics_markdown(snapshot),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-business-metrics.md"'},
         )
 
     @app.get("/dashboard/readiness", response_class=HTMLResponse)

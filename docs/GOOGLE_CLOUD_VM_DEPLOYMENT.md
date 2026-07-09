@@ -555,3 +555,8 @@ The customer activation workflow is database-backed and requires no extra servic
 ## Customer success and renewal workflow
 
 The dashboard includes `/dashboard/customers` and per-customer workspaces with health status, check-in tracking, renewal email templates, and downloadable customer-success summaries. These records are stored in the same SQLite database and included in the existing backup process.
+
+## Business metrics dashboard
+
+- `/dashboard/metrics` - authenticated business metrics and funnel snapshot.
+Use `/dashboard/metrics.md` for a Markdown export.

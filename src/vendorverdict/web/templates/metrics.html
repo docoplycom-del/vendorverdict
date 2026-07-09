@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Business metrics · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Executive snapshot</p>
+      <h1>Business metrics</h1>
+      <p class="lead">Track the full VendorVerdict operating funnel from lead capture to paid customer success.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/metrics.md">Export Markdown</a>
+      <a class="button secondary" href="/dashboard/readiness">Readiness</a>
+      <a class="button secondary" href="/dashboard">Dashboard</a>
+    </div>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ snapshot.lead_count }}</strong><span>leads</span></div>
+    <div class="metric"><strong>{{ snapshot.pilot_count }}</strong><span>pilot workspaces</span></div>
+    <div class="metric"><strong>{{ snapshot.proposal_count }}</strong><span>proposals</span></div>
+    <div class="metric"><strong>{{ snapshot.customer_count }}</strong><span>customers</span></div>
+    <div class="metric"><strong>{{ snapshot.paid_proposal_count }}</strong><span>paid proposals</span></div>
+    <div class="metric"><strong>{{ snapshot.current_customer_count }}</strong><span>billing current</span></div>
+    <div class="metric"><strong>{{ snapshot.customer_review_count }}</strong><span>customer reviews</span></div>
+    <div class="metric"><strong>{{ snapshot.share_count }}</strong><span>share links</span></div>
+  </div>
+</section>
+
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Conversion rates</p>
+    <h2>Lead-to-customer funnel</h2>
+  </div>
+  <div class="section-actions">
+    <a href="/dashboard/leads">Leads →</a>
+    <a href="/dashboard/pilots">Pilots →</a>
+    <a href="/dashboard/proposals">Proposals →</a>
+    <a href="/dashboard/customers">Customers →</a>
+  </div>
+</section>
+
+<div class="metric-grid cards-grid">
+  {% for card in snapshot.cards %}
+    <article class="card compact-card metric-card">
+      <p class="eyebrow">{{ card.label }}</p>
+      <h3>{{ card.value }}</h3>
+      <p class="muted">{{ card.detail }}</p>
+    </article>
+  {% endfor %}
+</div>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Operating signals</p>
+    <h2>What needs attention</h2>
+    <div class="metric-grid mini-metrics">
+      <div class="metric"><strong>{{ snapshot.follow_up_due_count }}</strong><span>proposal follow-ups due</span></div>
+      <div class="metric"><strong>{{ snapshot.payment_due_count }}</strong><span>payment actions due</span></div>
+      <div class="metric"><strong>{{ snapshot.at_risk_customer_count }}</strong><span>at-risk customers</span></div>
+      <div class="metric"><strong>{{ snapshot.renewal_due_customer_count }}</strong><span>renewal due</span></div>
+      <div class="metric"><strong>{{ snapshot.check_ins_due_count }}</strong><span>check-ins due</span></div>
+      <div class="metric"><strong>{{ snapshot.usage_percent }}%</strong><span>review allowance used</span></div>
+    </div>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Next best actions</p>
+    <h2>Do next</h2>
+    <ul class="check-list action-list">
+      {% for action in snapshot.next_actions %}
+        <li>{{ action }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="grid two-col gap-lg">
+  <article class="card compact-card">
+    <p class="eyebrow">Customer delivery</p>
+    <h2>Recurring review usage</h2>
+    <p class="lead compact">{{ snapshot.customer_review_count }}/{{ snapshot.review_allowance_total }} recurring reviews used across activated customers.</p>
+    <div class="progress-bar"><span style="width: {{ snapshot.usage_percent }}%"></span></div>
+    <p class="muted">Use this to spot expansion opportunities or under-used accounts before renewal.</p>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Recommendation themes</p>
+    <h2>Most frequent recommendations</h2>
+    {% if snapshot.top_recommendations %}
+      <div class="table-wrap flush">
+        <table>
+          <thead><tr><th>Vendor</th><th>Count</th></tr></thead>
+          <tbody>
+            {% for vendor, count in snapshot.top_recommendations %}
+              <tr><td><strong>{{ vendor }}</strong></td><td>{{ count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No recommendation themes yet. Run more vendor reviews to build a pattern library.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

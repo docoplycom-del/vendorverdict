@@ -965,3 +965,41 @@ html body button.button:not(.secondary) {
   gap: 1rem;
   margin-top: 1rem;
 }
+
+/* Business metrics dashboard */
+.cards-grid {
+  margin-bottom: 2rem;
+}
+.metric-card h3 {
+  color: var(--text);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  margin: .35rem 0;
+}
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.gap-lg {
+  gap: 1.25rem;
+  margin: 1.25rem 0;
+}
+.mini-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.action-list li {
+  margin-bottom: .65rem;
+}
+.lead.compact {
+  margin-bottom: .75rem;
+}
+.table-wrap.flush {
+  margin-top: .5rem;
+}
+@media (max-width: 860px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+  .mini-metrics {
+    grid-template-columns: 1fr;
+  }
+}

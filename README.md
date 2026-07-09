@@ -868,3 +868,5 @@ After a proposal is accepted or paid, VendorVerdict can now create a protected c
 ## Customer review operations
 
 Customer accounts can now run recurring VendorVerdict reviews after activation. Open a customer workspace at `/dashboard/customers/{customer_id}`, run a vendor review, and VendorVerdict will save the report, link it to the customer, and track usage against the monthly review allowance. Export customer review history from `/dashboard/customers/{customer_id}/reviews.csv`.
+
+- Business metrics dashboard for funnel, proposal, payment, and customer-success signals (`/dashboard/metrics`).
