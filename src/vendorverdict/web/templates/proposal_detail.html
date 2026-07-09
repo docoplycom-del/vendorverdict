@@ -26,6 +26,50 @@
   </div>
 </section>
 
+<section class="card compact-card customer-activation-card">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Customer activation</p>
+      <h2>Convert proposal into a customer account</h2>
+      <p class="muted">Use this after a proposal is accepted or paid. It creates a protected customer workspace for recurring reviews, billing status, renewal date, and onboarding notes.</p>
+    </div>
+    {% if customer %}
+      <div class="hero-actions compact"><a class="button" href="/dashboard/customers/{{ customer.customer_id }}">Open customer account</a></div>
+    {% endif %}
+  </div>
+  {% if customer %}
+    <div class="notice success">Customer account already created for {{ customer.company }} · {{ customer.status.replace('_', ' ') }} · {{ customer.billing_label }}.</div>
+  {% else %}
+    <form class="lead-admin-form delivery-form" method="post" action="/dashboard/proposals/{{ proposal.proposal_id }}/customer">
+      <div class="form-grid">
+        <label>Initial status
+          <select name="status">
+            <option value="onboarding" {% if proposal.payment_status != 'paid' %}selected{% endif %}>onboarding</option>
+            <option value="active" {% if proposal.payment_status == 'paid' %}selected{% endif %}>active</option>
+          </select>
+        </label>
+        <label>Billing status
+          <select name="billing_status">
+            <option value="trial">trial</option>
+            <option value="payment_due" {% if proposal.payment_status == 'invoice_sent' %}selected{% endif %}>payment due</option>
+            <option value="current" {% if proposal.payment_status == 'paid' %}selected{% endif %}>current</option>
+          </select>
+        </label>
+        <label>Monthly review allowance
+          <input name="review_allowance" type="number" min="0" placeholder="20, 40, or custom">
+        </label>
+        <label>Renewal date
+          <input name="renewal_date" type="date">
+        </label>
+      </div>
+      <label>Onboarding notes
+        <textarea name="onboarding_notes" rows="3" placeholder="Book onboarding call, agree first review batch, confirm reporting cadence."></textarea>
+      </label>
+      <button class="button" type="submit">Create customer account</button>
+    </form>
+  {% endif %}
+</section>
+
 <section class="card share-card">
   <div class="section-head inline">
     <div>

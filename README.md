@@ -860,3 +860,7 @@ See docs/STRIPE_CHECKOUT_WORKFLOW.md for optional Stripe Checkout link creation.
 ## Stripe webhook reconciliation
 
 VendorVerdict can optionally receive Stripe webhook events at `/webhooks/stripe` and mark proposals as paid after Stripe confirms Checkout payment. Configure `VENDORVERDICT_STRIPE_WEBHOOK_ENABLED=1` and `VENDORVERDICT_STRIPE_WEBHOOK_SECRET` in the production env file. See `docs/STRIPE_WEBHOOK_RECONCILIATION.md`.
+
+## Customer activation workflow
+
+After a proposal is accepted or paid, VendorVerdict can now create a protected customer account from `/dashboard/proposals/{proposal_id}`. Customer workspaces live at `/dashboard/customers` and track onboarding status, billing status, review allowance, renewal date, linked proposal/pilot, and internal notes. See `docs/CUSTOMER_ACTIVATION_WORKFLOW.md`.

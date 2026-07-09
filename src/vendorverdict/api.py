@@ -23,6 +23,7 @@ from vendorverdict.auth import (
     set_session_cookie,
 )
 from vendorverdict.cli import DEMO_QUERY
+from vendorverdict.customers import BILLING_STATUSES, CUSTOMER_PACKAGES, CUSTOMER_STATUSES, CustomerStore
 from vendorverdict.lead_followups import build_lead_followup_templates
 from vendorverdict.lead_notifications import send_lead_notification
 from vendorverdict.leads import LEAD_STATUSES, LeadStore
@@ -232,6 +233,10 @@ def create_app(
     def proposal_store() -> ProposalStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
         return ProposalStore(env_db or app.state.default_db_path)
+
+    def customer_store() -> CustomerStore:
+        env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
+        return CustomerStore(env_db or app.state.default_db_path)
 
     def share_store() -> ShareStore:
         env_db = os.getenv("VENDORVERDICT_API_DB_PATH") or os.getenv("VENDORVERDICT_DB_PATH")
@@ -521,6 +526,7 @@ def create_app(
                 "lead_count": len(lead_store().list_leads(limit=200)),
                 "pilot_count": len(pilot_store().list_pilots(limit=200)),
                 "proposal_count": len(proposal_store().list_proposals(limit=200)),
+                "customer_count": len(customer_store().list_customers(limit=200)),
                 "service": "VendorVerdict",
                 "version": __version__,
                 "auth": _auth_context(request),
@@ -533,6 +539,7 @@ def create_app(
         lead_count = len(lead_store().list_leads(limit=200))
         pilot_count = len(pilot_store().list_pilots(limit=200))
         proposal_count = len(proposal_store().list_proposals(limit=500))
+        customer_count = len(customer_store().list_customers(limit=500))
         share_count = len(share_store().list_shares(limit=1000))
         runtime_settings = settings_store().get_settings()
         snapshot = build_readiness_snapshot(
@@ -949,6 +956,71 @@ def create_app(
         proposal_id = proposal_store().create_from_pilot(pilot, outcome, settings=settings_store().get_settings())
         return RedirectResponse(url=f"/dashboard/proposals/{proposal_id}", status_code=303)
 
+    @app.get("/dashboard/customers", response_class=HTMLResponse)
+    def dashboard_customers(request: Request) -> HTMLResponse:
+        customers = customer_store()
+        return TEMPLATES.TemplateResponse(
+            request,
+            "customers.html",
+            {
+                "request": request,
+                "customers": customers.list_customers(limit=100),
+                "status_counts": customers.status_counts(),
+                "billing_counts": customers.billing_counts(),
+                "customer_statuses": CUSTOMER_STATUSES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.get("/dashboard/customers.csv")
+    def export_dashboard_customers_csv() -> PlainTextResponse:
+        csv_text = customer_store().export_csv(limit=2000)
+        return PlainTextResponse(
+            csv_text,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="vendorverdict-customers.csv"'},
+        )
+
+    @app.get("/dashboard/customers/{customer_id}", response_class=HTMLResponse)
+    def dashboard_customer_detail(request: Request, customer_id: str) -> HTMLResponse:
+        customers = customer_store()
+        customer = customers.get_customer(customer_id)
+        if customer is None:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        proposal = proposal_store().get_proposal(customer.proposal_id) if customer.proposal_id else None
+        pilot = pilot_store().get_pilot(customer.pilot_id) if customer.pilot_id else None
+        return TEMPLATES.TemplateResponse(
+            request,
+            "customer_detail.html",
+            {
+                "request": request,
+                "customer": customer,
+                "proposal": proposal,
+                "pilot": pilot,
+                "customer_statuses": CUSTOMER_STATUSES,
+                "billing_statuses": BILLING_STATUSES,
+                "customer_packages": CUSTOMER_PACKAGES,
+                "auth": _auth_context(request),
+            },
+        )
+
+    @app.post("/dashboard/customers/{customer_id}/update")
+    async def update_dashboard_customer(request: Request, customer_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        updated = customer_store().update_customer(
+            customer_id,
+            status=form.get("status", "onboarding"),
+            billing_status=form.get("billing_status", "trial"),
+            package=form.get("package", "starter"),
+            review_allowance=form.get("review_allowance", ""),
+            renewal_date=form.get("renewal_date", ""),
+            onboarding_notes=form.get("onboarding_notes", ""),
+            internal_notes=form.get("internal_notes", ""),
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Customer not found: {customer_id}")
+        return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
+
     @app.get("/dashboard/proposals", response_class=HTMLResponse)
     def dashboard_proposals(request: Request) -> HTMLResponse:
         proposals = proposal_store()
@@ -1116,6 +1188,7 @@ def create_app(
         stripe_webhook_settings = get_stripe_webhook_settings()
         payment_emails = build_payment_email_pair(proposal, share_url=share_url)
         payment_events = proposals.list_payment_events(proposal_id)
+        customer = customer_store().get_by_proposal_id(proposal_id)
         return TEMPLATES.TemplateResponse(
             request,
             "proposal_detail.html",
@@ -1150,10 +1223,27 @@ def create_app(
                 "stripe_webhook_configured": stripe_webhook_settings.is_configured,
                 "stripe_webhook_missing_fields": stripe_webhook_settings.missing_fields,
                 "payment_events": payment_events,
+                "customer": customer,
                 "default_checkout_amount": amount_from_price_text(proposal.proposed_price),
                 "auth": _auth_context(request),
             },
         )
+
+    @app.post("/dashboard/proposals/{proposal_id}/customer")
+    async def create_dashboard_customer_from_proposal(request: Request, proposal_id: str) -> RedirectResponse:
+        form = _parse_urlencoded_form(await request.body())
+        proposal = proposal_store().get_proposal(proposal_id)
+        if proposal is None:
+            raise HTTPException(status_code=404, detail=f"Proposal not found: {proposal_id}")
+        customer_id = customer_store().create_from_proposal(
+            proposal,
+            status=form.get("status", ""),
+            billing_status=form.get("billing_status", ""),
+            review_allowance=form.get("review_allowance", ""),
+            renewal_date=form.get("renewal_date", ""),
+            onboarding_notes=form.get("onboarding_notes", ""),
+        )
+        return RedirectResponse(url=f"/dashboard/customers/{customer_id}", status_code=303)
 
     @app.post("/dashboard/proposals/{proposal_id}/share")
     async def create_dashboard_proposal_share(proposal_id: str) -> RedirectResponse:

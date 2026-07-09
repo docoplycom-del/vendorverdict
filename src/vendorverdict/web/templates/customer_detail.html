@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Customer · {{ customer.company }}{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Customer workspace</p>
+      <h1>{{ customer.company }}</h1>
+      <p class="muted">{{ customer.status.replace('_', ' ') }} · {{ customer.package_label }} · {{ customer.billing_label }}</p>
+    </div>
+    <div class="hero-actions compact">
+      {% if proposal %}<a class="button secondary" href="/dashboard/proposals/{{ proposal.proposal_id }}">Proposal</a>{% endif %}
+      {% if pilot %}<a class="button secondary" href="/dashboard/pilots/{{ pilot.pilot_id }}">Pilot</a>{% endif %}
+      <a class="button secondary" href="/dashboard/customers">Back to customers</a>
+    </div>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    <div class="metric"><strong>{{ customer.status }}</strong><span>account status</span></div>
+    <div class="metric"><strong>{{ customer.billing_status.replace('_', ' ') }}</strong><span>billing</span></div>
+    <div class="metric"><strong>{{ customer.review_allowance }}</strong><span>reviews/month</span></div>
+    <div class="metric"><strong>{{ customer.renewal_date or '—' }}</strong><span>renewal date</span></div>
+  </div>
+</section>
+
+<section class="grid-two lead-detail-grid">
+  <article class="card compact-card">
+    <p class="eyebrow">Account context</p>
+    <h2>Customer details</h2>
+    <dl class="detail-list">
+      <dt>Contact</dt><dd>{{ customer.contact_name }}</dd>
+      <dt>Email</dt><dd>{{ customer.contact_email }}</dd>
+      <dt>Company</dt><dd>{{ customer.company }}</dd>
+      <dt>Proposal</dt><dd>{% if proposal %}<a href="/dashboard/proposals/{{ proposal.proposal_id }}">{{ proposal.proposal_id[:8] }}</a>{% else %}—{% endif %}</dd>
+      <dt>Pilot</dt><dd>{% if pilot %}<a href="/dashboard/pilots/{{ pilot.pilot_id }}">{{ pilot.pilot_id[:8] }}</a>{% else %}—{% endif %}</dd>
+    </dl>
+  </article>
+
+  <article class="card compact-card">
+    <p class="eyebrow">Onboarding notes</p>
+    <h2>Next actions</h2>
+    <p>{{ customer.onboarding_notes or 'Confirm onboarding call, first recurring review batch, and reporting cadence.' }}</p>
+    {% if customer.internal_notes %}<p class="muted">Internal: {{ customer.internal_notes }}</p>{% endif %}
+  </article>
+</section>
+
+<section class="card compact-card">
+  <p class="eyebrow">Customer admin</p>
+  <h2>Update account</h2>
+  <form class="lead-admin-form settings-form" method="post" action="/dashboard/customers/{{ customer.customer_id }}/update">
+    <div class="form-grid">
+      <label>Status
+        <select name="status">
+          {% for status in customer_statuses %}<option value="{{ status }}" {% if status == customer.status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Billing status
+        <select name="billing_status">
+          {% for status in billing_statuses %}<option value="{{ status }}" {% if status == customer.billing_status %}selected{% endif %}>{{ status.replace('_', ' ') }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Package
+        <select name="package">
+          {% for package in customer_packages %}<option value="{{ package }}" {% if package == customer.package %}selected{% endif %}>{{ package }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Review allowance / month
+        <input name="review_allowance" type="number" min="0" value="{{ customer.review_allowance }}">
+      </label>
+      <label>Renewal date
+        <input name="renewal_date" type="date" value="{{ customer.renewal_date }}">
+      </label>
+    </div>
+    <label>Onboarding notes
+      <textarea name="onboarding_notes" rows="4">{{ customer.onboarding_notes }}</textarea>
+    </label>
+    <label>Internal notes
+      <textarea name="internal_notes" rows="4">{{ customer.internal_notes }}</textarea>
+    </label>
+    <button class="button" type="submit">Save customer account</button>
+  </form>
+</section>
+{% endblock %}

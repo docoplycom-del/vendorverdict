@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Customers · VendorVerdict{% endblock %}
+{% block content %}
+<section class="card outcome-hero">
+  <div class="section-head inline">
+    <div>
+      <p class="eyebrow">Customer accounts</p>
+      <h1>Customer activation</h1>
+      <p class="lead">Track paid or accepted proposals after they become recurring VendorVerdict customers.</p>
+    </div>
+    <div class="hero-actions compact">
+      <a class="button secondary" href="/dashboard/proposals">Proposals</a>
+      <a class="button secondary" href="/dashboard/customers.csv">Export CSV</a>
+      <a class="button secondary" href="/dashboard">Dashboard</a>
+    </div>
+  </div>
+  <div class="metric-grid pilot-metrics">
+    {% for status in customer_statuses %}
+      <div class="metric"><strong>{{ status_counts.get(status, 0) }}</strong><span>{{ status.replace('_', ' ') }}</span></div>
+    {% endfor %}
+    <div class="metric"><strong>{{ billing_counts.get('current', 0) }}</strong><span>billing current</span></div>
+  </div>
+</section>
+
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Activated accounts</p>
+    <h2>Customers</h2>
+  </div>
+  <div class="section-actions">
+    <a href="/dashboard/proposals">Create from proposals →</a>
+    <a href="/dashboard/customers.csv">Export CSV →</a>
+  </div>
+</section>
+
+{% if customers %}
+  <div class="table-wrap card compact-card">
+    <table>
+      <thead><tr><th>Company</th><th>Contact</th><th>Package</th><th>Status</th><th>Billing</th><th>Allowance</th><th>Renewal</th><th></th></tr></thead>
+      <tbody>
+        {% for customer in customers %}
+          <tr>
+            <td><strong>{{ customer.company }}</strong></td>
+            <td>{{ customer.contact_name }}<br><span class="muted">{{ customer.contact_email }}</span></td>
+            <td>{{ customer.package_label }}</td>
+            <td><span class="status-pill">{{ customer.status.replace('_', ' ') }}</span></td>
+            <td>{{ customer.billing_label }}</td>
+            <td>{{ customer.review_allowance }} reviews/month</td>
+            <td>{{ customer.renewal_date or '—' }}</td>
+            <td><a class="button small" href="/dashboard/customers/{{ customer.customer_id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty">
+    <h3>No customer accounts yet</h3>
+    <p>Create a customer account from a paid or accepted proposal when a pilot converts into recurring work.</p>
+    <a class="button" href="/dashboard/proposals">Open proposals</a>
+  </div>
+{% endif %}
+{% endblock %}
